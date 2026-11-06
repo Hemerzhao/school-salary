@@ -1,0 +1,57 @@
+@import '../../styles/variables.scss';
+
+.home-page {
+  padding-bottom: 120px;
+}
+
+.tabs {
+  display: flex;
+  background: $card-bg;
+  border-radius: 12px;
+  padding: 8px;
+  margin-bottom: 24px;
+
+  .tab {
+    flex: 1;
+    text-align: center;
+    padding: 16px 0;
+    border-radius: 8px;
+    color: $text-muted;
+    font-size: 28px;
+    transition: all 0.2s;
+
+    &.tab-active {
+      background: $primary;
+      color: #fff;
+      font-weight: 600;
+    }
+  }
+}
+
+.list {
+  min-height: 200px;
+
+  .loading,
+  .empty {
+    display: block;
+    text-align: center;
+    padding: 80px 0;
+    color: $text-muted;
+    font-size: 28px;
+  }
+}
+
+.bottom-actions {
+  position: fixed;
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+
+  .btn-makeup {
+    background: $card-bg;
+    color: $primary;
+    border: 2px solid $primary;
+    border-radius: 50px;
+    font-size: 28px;
+  }
+}

@@ -1,0 +1,9 @@
+package com.school.salary.repository;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.school.salary.entity.SalaryStatement;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface SalaryStatementMapper extends BaseMapper<SalaryStatement> {
+}

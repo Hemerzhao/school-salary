@@ -1,0 +1,59 @@
+# ===== Java / Maven =====
+backend/target/
+backend/*.iml
+backend/.idea/
+*.class
+*.jar
+*.log
+HELP.md
+
+# ===== Node.js =====
+**/node_modules/
+**/dist/
+**/.nuxt/
+**/.next/
+admin-web/.vite/
+teacher-app/.vite/
+admin-app/.vite/
+teacher-miniapp/.vite/
+
+# ===== IDE =====
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# ===== OS =====
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ===== Database =====
+*.sql.bak
+*.sql~
+
+# ===== Build artifacts =====
+**/build/
+**/.cache/
+
+# ===== Secrets (never commit) =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+*.keystore
+secrets.yml
+
+# ===== Docker =====
+docker-compose.override.yml
+
+# ===== HBuilderX =====
+unpackage/
+.hbuilderx/
+
+# ===== JWT / generated =====
+jwt_secret.key
+salary-backend-*.jar

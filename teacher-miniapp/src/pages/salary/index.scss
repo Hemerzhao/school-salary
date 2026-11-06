@@ -1,0 +1,93 @@
+@import '../../styles/variables.scss';
+
+.salary-page {
+  .estimated-card {
+    background: linear-gradient(135deg, $primary, #69b1ff);
+    color: #fff;
+    border-radius: 20px;
+    padding: 36px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 24px rgba(22, 119, 255, 0.3);
+
+    .label {
+      font-size: 26px;
+      opacity: 0.9;
+    }
+
+    .amount {
+      font-size: 56px;
+      font-weight: 700;
+      margin: 16px 0 12px;
+    }
+
+    .sub {
+      font-size: 24px;
+      opacity: 0.85;
+
+      .divider {
+        margin: 0 12px;
+        opacity: 0.6;
+      }
+    }
+  }
+
+  .section-title {
+    font-size: 30px;
+    font-weight: 600;
+    color: $text;
+    margin: 16px 0 20px;
+  }
+
+  .history-list {
+    .history-item {
+      background: $card-bg;
+      border-radius: 16px;
+      padding: 28px 24px;
+      margin-bottom: 16px;
+
+      .month {
+        font-size: 30px;
+        font-weight: 600;
+        color: $text;
+      }
+
+      .status {
+        display: inline-block;
+        margin-left: 12px;
+        font-size: 22px;
+        padding: 4px 12px;
+        border-radius: 16px;
+
+        &.status-pending {
+          color: $warning;
+          background: #fffbe6;
+        }
+
+        &.status-done {
+          color: $primary;
+          background: #e6f4ff;
+        }
+
+        &.status-paid {
+          color: $success;
+          background: #f6ffed;
+        }
+      }
+
+      .total {
+        font-size: 32px;
+        font-weight: 700;
+        color: $text;
+      }
+    }
+  }
+
+  .loading,
+  .empty {
+    display: block;
+    text-align: center;
+    padding: 60px 0;
+    color: $text-muted;
+    font-size: 28px;
+  }
+}

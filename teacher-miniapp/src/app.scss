@@ -1,0 +1,46 @@
+@import './styles/variables.scss';
+
+page {
+  background-color: $bg;
+  color: $text;
+  font-size: 28px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', Arial, sans-serif;
+}
+
+view, text {
+  box-sizing: border-box;
+}
+
+.page {
+  padding: 24px;
+  min-height: 100vh;
+}
+
+.card {
+  background: $card-bg;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+}
+
+.text-muted {
+  color: $text-muted;
+  font-size: 24px;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.flex-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}

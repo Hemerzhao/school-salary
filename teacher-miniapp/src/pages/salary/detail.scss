@@ -1,0 +1,140 @@
+@import '../../styles/variables.scss';
+
+.detail-page {
+  .summary-card {
+    background: $card-bg;
+    border-radius: 20px;
+    padding: 32px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.05);
+
+    .month {
+      font-size: 28px;
+      color: $text-muted;
+    }
+
+    .total {
+      font-size: 64px;
+      font-weight: 700;
+      color: $primary;
+      margin: 12px 0 24px;
+    }
+
+    .breakdown {
+      border-top: 1px solid $border;
+      padding-top: 20px;
+
+      .breakdown-item {
+        padding: 12px 0;
+
+        .label {
+          color: $text-muted;
+          font-size: 28px;
+        }
+
+        .value {
+          color: $text;
+          font-size: 28px;
+
+          &.neg {
+            color: $danger;
+          }
+        }
+
+        &.subtotal {
+          border-top: 1px dashed $border;
+          margin-top: 8px;
+          padding-top: 16px;
+
+          .label {
+            color: $text;
+            font-weight: 600;
+          }
+
+          .value {
+            font-weight: 700;
+            font-size: 32px;
+          }
+        }
+      }
+    }
+  }
+
+  .section-title {
+    font-size: 30px;
+    font-weight: 600;
+    color: $text;
+    margin: 16px 0 20px;
+  }
+
+  .items {
+    .item-card {
+      background: $card-bg;
+      border-radius: 16px;
+      margin-bottom: 16px;
+      overflow: hidden;
+
+      .item-main {
+        padding: 24px;
+
+        .item-title {
+          display: block;
+          font-size: 30px;
+          font-weight: 600;
+          color: $text;
+        }
+
+        .item-sub {
+          display: block;
+          margin-top: 8px;
+          font-size: 24px;
+        }
+
+        .item-right {
+          gap: 12px;
+
+          .item-amount {
+            font-size: 32px;
+            font-weight: 700;
+            color: $text;
+          }
+
+          .expand-arrow {
+            font-size: 22px;
+            color: $text-muted;
+          }
+        }
+      }
+
+      .trace {
+        background: #fafafa;
+        padding: 20px 24px;
+        border-top: 1px solid $border;
+
+        .trace-title {
+          font-size: 26px;
+          font-weight: 600;
+          color: $text;
+          margin-bottom: 12px;
+        }
+
+        .trace-row {
+          margin-bottom: 8px;
+          font-size: 24px;
+          line-height: 1.5;
+
+          .trace-label {
+            color: $text-muted;
+            display: inline-block;
+            width: 80px;
+          }
+
+          .trace-val {
+            color: $text;
+            word-break: break-all;
+          }
+        }
+      }
+    }
+  }
+}
