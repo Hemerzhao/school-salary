@@ -222,7 +222,7 @@
 
 <script>
 const API = '/api';
-let token = localStorage.getItem('token');
+let token = localStorage.getItem('admin_token');
 
 window.onload = () => {
   if (token && localStorage.getItem('adminInfo')) {
@@ -252,7 +252,7 @@ async function doLogin() {
     const d = await r.json();
     if (d.code === 200) {
       token = d.data.token;
-      localStorage.setItem('token', token);
+      localStorage.setItem('admin_token', token);
       localStorage.setItem('adminInfo', JSON.stringify(d.data.user));
       document.getElementById('adminName').textContent = d.data.user.name;
       showMain();
@@ -260,7 +260,7 @@ async function doLogin() {
   } catch(e) { toast('网络错误'); }
   btn.disabled = false; btn.textContent = '登 录';
 }
-function logout() { localStorage.removeItem('token'); token=null; showLogin(); }
+function logout() { localStorage.removeItem('admin_token'); token=null; showLogin(); }
 
 // ---------- 修改密码 ----------
 function openPwdModal() {

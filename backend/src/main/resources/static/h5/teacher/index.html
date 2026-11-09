@@ -158,7 +158,7 @@
 
 <script>
 const API = '/api';
-let token = localStorage.getItem('token');
+let token = localStorage.getItem('teacher_token');
 let teacher = null;
 
 // ---------- 初始化 ----------
@@ -190,7 +190,7 @@ async function doLogin() {
     if (d.code === 200) {
       token = d.data.token;
       teacher = d.data.user;
-      localStorage.setItem('token', token);
+      localStorage.setItem('teacher_token', token);
       localStorage.setItem('teacherInfo', JSON.stringify(teacher));
       showMain();
     } else {
@@ -200,7 +200,7 @@ async function doLogin() {
   btn.disabled = false; btn.textContent = '登 录';
 }
 
-function logout() { localStorage.removeItem('token'); localStorage.removeItem('teacherInfo'); token=null; teacher=null; showLogin(); }
+function logout() { localStorage.removeItem('teacher_token'); localStorage.removeItem('teacherInfo'); token=null; teacher=null; showLogin(); }
 
 // ---------- 修改密码 ----------
 function openPwdModal() {
