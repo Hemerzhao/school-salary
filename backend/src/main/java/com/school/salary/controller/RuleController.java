@@ -23,7 +23,7 @@ import java.util.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/rule")
+@RequestMapping("/rule")
 @RequiredArgsConstructor
 public class RuleController {
 

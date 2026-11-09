@@ -73,7 +73,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
-import { list, audit } from '@/api/attendance'
+import { list as listApi, audit } from '@/api/attendance'
 import { list as campusListApi } from '@/api/campus'
 
 const loading = ref(false)
@@ -90,7 +90,7 @@ const current = ref(null)
 const load = async () => {
   loading.value = true
   try {
-    const res = await list({
+    const res = await listApi({
       ...filter,
       page: page.current, size: page.size,
       start_from: filter.dateRange?.[0], start_to: filter.dateRange?.[1]
@@ -117,5 +117,5 @@ const doAudit = async () => {
   } catch (_) {} finally { submitting.value = false }
 }
 
-onMounted(() => { try { campusList.value = await campusListApi({}) } catch (_) {}; load() })
+onMounted(async () => { try { campusList.value = await campusListApi({}) } catch (_) {}; load() })
 </script>

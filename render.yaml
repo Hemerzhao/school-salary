@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: school-salary
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: ./Dockerfile.render
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # 数据库连接信息（在 TiDB Cloud 控制台获取后填入）
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      # JWT 签名密钥，由 Render 自动生成随机值
+      - key: JWT_SECRET
+        generateValue: true

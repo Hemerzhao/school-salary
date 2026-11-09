@@ -57,6 +57,14 @@ public class Attendance {
     @TableField("leave_count")
     private Integer leaveCount;
 
+    /** 学生姓名，逗号分隔 */
+    @TableField("student_names")
+    private String studentNames;
+
+    /** 教师姓名（非数据库字段，列表展示用） */
+    @TableField(exist = false)
+    private String teacherName;
+
     /** 缺勤人数 */
     @TableField("absent_count")
     private Integer absentCount;

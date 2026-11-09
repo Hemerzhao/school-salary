@@ -32,6 +32,10 @@ public class SalaryCalcService {
     private final SalaryStatementMapper statementMapper;
     private final AdjustmentItemMapper adjustmentMapper;
     private final AuditLogMapper auditLogMapper;
+    private final AttendanceMapper attendanceMapper;
+    private final ScheduleMapper scheduleMapper;
+    private final TeacherMapper teacherMapper;
+    private final CourseMapper courseMapper;
 
     /**
      * 计算单个打卡记录的工资明细
@@ -74,7 +78,7 @@ public class SalaryCalcService {
                 .attendanceSnapshot(JsonUtil.toJson(attendance))
                 .teacherInfoSnapshot(JsonUtil.toJson(Map.of("level", teacher.getLevel(), "employmentType", teacher.getEmploymentType())))
                 .scheduleInfoSnapshot(JsonUtil.toJson(schedule))
-                .calculationSnapshot("{}")  // 计算后回填
+                .calculationTrace("{}")  // 计算后回填
                 .build();
         snapshotMapper.insert(snapshot);
 
@@ -86,7 +90,8 @@ public class SalaryCalcService {
         int leaveCount = attendance.getLeaveCount() == null ? 0 : attendance.getLeaveCount();
         int headcountBase = Math.max(0, studentCount - leaveCount);
 
-        String courseType = schedule.getCourseType();
+        Course course = courseMapper.selectById(schedule.getCourseId());
+        String courseType = course != null ? course.getCourseType() : "NORMAL";
         String teacherLevel = teacher.getLevel();
         boolean isWeekend = schedule.getStartTime().getDayOfWeek().getValue() >= 6; // Sat=6, Sun=7
         int hour = schedule.getStartTime().getHour();
@@ -125,7 +130,7 @@ public class SalaryCalcService {
                 .add(courseBonus).add(levelBonus).add(timeSlotSubsidy);
 
         // 6. 更新快照计算轨迹
-        snapshot.setCalculationSnapshot(JsonUtil.toJson(trace));
+        snapshot.setCalculationTrace(JsonUtil.toJson(trace));
         snapshotMapper.updateById(snapshot);
 
         // 7. 保存明细
@@ -134,7 +139,7 @@ public class SalaryCalcService {
                 .attendanceId(attendance.getId())
                 .scheduleId(schedule.getId())
                 .calcMonth(calcMonth)
-                .hours(hours.doubleValue())
+                .hours(hours)
                 .baseAmount(baseAmount)
                 .headcountAmount(headcountAmount)
                 .courseTypeBonus(courseBonus)
@@ -210,8 +215,8 @@ public class SalaryCalcService {
                 String key = teacher.getId() + "_" + month;
                 detailsByTeacher.computeIfAbsent(key, k -> new ArrayList<>()).add(detail);
             } catch (BizException e) {
-                errors.add("打卡[" + att.getId() + "] " + e.getMsg());
-                log.warn("计算失败: {}", e.getMsg());
+                errors.add("打卡[" + att.getId() + "] " + e.getMessage());
+                log.warn("计算失败: {}", e.getMessage());
             } catch (Exception e) {
                 errors.add("打卡[" + att.getId() + "] 异常: " + e.getMessage());
                 log.error("计算异常", e);
@@ -343,7 +348,7 @@ public class SalaryCalcService {
         if (tiersObj instanceof List) {
             tiers = (List<Map<String, Object>>) tiersObj;
         } else {
-            tiers = JsonUtil.parseArray(JsonUtil.toJson(tiersObj), Map.class);
+            tiers = (List<Map<String, Object>>) JsonUtil.parseObject(JsonUtil.toJson(tiersObj), new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, Object>>>() {});
         }
 
         // 按 base_count 升序

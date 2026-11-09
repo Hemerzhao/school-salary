@@ -55,7 +55,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
-import { list, create, update, remove } from '@/api/course'
+import { list as listApi, create, update, remove } from '@/api/course'
 
 const loading = ref(false)
 const submitting = ref(false)
@@ -72,7 +72,7 @@ const isEdit = computed(() => !!form.id)
 
 const load = async () => {
   loading.value = true
-  try { list.value = await list({ keyword: keyword.value }) } catch (_) {} finally { loading.value = false }
+  try { list.value = await listApi({ keyword: keyword.value }) } catch (_) {} finally { loading.value = false }
 }
 
 const openDialog = (row) => { Object.assign(form, row ? { ...row } : emptyForm()); dialogVisible.value = true }

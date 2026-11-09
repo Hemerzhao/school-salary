@@ -4,14 +4,22 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.school.salary.common.BizException;
 import com.school.salary.common.Result;
+import com.school.salary.entity.Campus;
+import com.school.salary.entity.SysUser;
 import com.school.salary.entity.Teacher;
+import com.school.salary.repository.CampusMapper;
+import com.school.salary.repository.SysUserMapper;
 import com.school.salary.repository.TeacherMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 教师管理
@@ -23,12 +31,101 @@ import java.util.List;
 public class TeacherController {
 
     private final TeacherMapper teacherMapper;
+    private final SysUserMapper sysUserMapper;
+    private final CampusMapper campusMapper;
+
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+
+    /**
+     * 注册教师账号：一次完成「创建登录账号 + 创建教师档案」
+     * 请求体：{ name, account, password, level, phone }
+     */
+    @PostMapping("/register")
+    @Transactional(rollbackFor = Exception.class)
+    public Result<Teacher> register(@RequestBody Map<String, Object> body) {
+        String name = str(body.get("name"));
+        String account = str(body.get("account"));
+        String password = str(body.get("password"));
+        String level = str(body.get("level"));
+        String phone = str(body.get("phone"));
+
+        if (name == null || name.isBlank()) {
+            throw new BizException("请填写教师姓名");
+        }
+        if (account == null || account.isBlank()) {
+            throw new BizException("请填写登录账号");
+        }
+        if (password == null || password.isBlank()) {
+            throw new BizException("请填写初始密码");
+        }
+
+        // 1. 账号唯一性校验
+        Long exists = sysUserMapper.selectCount(new QueryWrapper<SysUser>().eq("username", account));
+        if (exists != null && exists > 0) {
+            throw new BizException("账号已存在: " + account);
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        // 校区：请求未指定时归入第一个启用校区（campus_id 为 NOT NULL）
+        Long campusId = null;
+        Object campusVal = body.get("campusId");
+        if (campusVal != null && !String.valueOf(campusVal).isBlank()) {
+            campusId = Long.valueOf(String.valueOf(campusVal));
+        } else {
+            List<Campus> campuses = campusMapper.selectList(
+                    new QueryWrapper<Campus>().eq("status", 1).orderByAsc("id"));
+            if (campuses.isEmpty()) {
+                throw new BizException("请先创建校区后再注册教师");
+            }
+            campusId = campuses.get(0).getId();
+        }
+
+        // 2. 创建教师档案（工号自动生成，employee_no 为 NOT NULL）
+        Teacher teacher = Teacher.builder()
+                .name(name)
+                .phone(phone)
+                .employeeNo("T" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")))
+                .campusId(campusId)
+                .level(level == null || level.isBlank() ? "P2" : level)
+                .employmentType("FULL")
+                .status(1)
+                .createdAt(now)
+                .updatedAt(now)
+                .build();
+        teacherMapper.insert(teacher);
+
+        // 3. 创建登录账号并回填 teacher_id
+        SysUser user = SysUser.builder()
+                .username(account)
+                .password(passwordEncoder.encode(password))
+                .name(name)
+                .role("TEACHER")
+                .teacherId(teacher.getId())
+                .status(1)
+                .createdAt(now)
+                .build();
+        sysUserMapper.insert(user);
+
+        log.info("注册教师成功: account={}, name={}, teacherId={}", account, name, teacher.getId());
+        return Result.ok(teacher);
+    }
+
+    private String str(Object v) {
+        return v == null ? null : String.valueOf(v);
+    }
 
     @PostMapping
     public Result<Teacher> create(@RequestBody Teacher teacher) {
+        if (teacher.getEmployeeNo() == null || teacher.getEmployeeNo().isBlank()) {
+            teacher.setEmployeeNo("T" + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
+        }
         checkEmployeeNoUnique(teacher.getEmployeeNo(), null);
         teacher.setCreatedAt(LocalDateTime.now());
         teacher.setUpdatedAt(LocalDateTime.now());
+        if (teacher.getStatus() == null) {
+            teacher.setStatus(1);
+        }
         teacherMapper.insert(teacher);
         return Result.ok(teacher);
     }

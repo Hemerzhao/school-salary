@@ -51,7 +51,7 @@ const stat = ref({
 })
 
 const entries = [
-  { label: '工资计算', icon: 'Calculator', path: '/admin/salary/calc' },
+  { label: '工资计算', icon: 'DataAnalysis', path: '/admin/salary/calc' },
   { label: '规则模板', icon: 'Document', path: '/admin/rule/template' },
   { label: '工资单管理', icon: 'Tickets', path: '/admin/salary/statement' },
   { label: '打卡审核', icon: 'Stamp', path: '/admin/attendance' }

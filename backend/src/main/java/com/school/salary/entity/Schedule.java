@@ -57,6 +57,9 @@ public class Schedule {
     @TableField("schedule_type")
     private String scheduleType;
 
+    @TableField(exist = false)
+    private String courseType;
+
     /** 1待上 2进行中 3已完成 4已取消 */
     @TableField("status")
     private Integer status;

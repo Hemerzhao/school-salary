@@ -117,7 +117,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
-import { page, create, update, remove } from '@/api/schedule'
+import { page as pageApi, create, update, remove } from '@/api/schedule'
 import { list as teacherList } from '@/api/teacher'
 import { list as classList } from '@/api/class'
 import { list as courseList } from '@/api/course'
@@ -164,7 +164,7 @@ const load = async () => {
       start_from: filter.dateRange?.[0],
       start_to: filter.dateRange?.[1]
     }
-    const res = await page(params)
+    const res = await pageApi(params)
     if (Array.isArray(res)) { page.list = res; page.total = res.length }
     else { page.list = res.list || res.records || []; page.total = res.total || 0 }
   } catch (_) {} finally { loading.value = false }

@@ -7,9 +7,13 @@ import com.school.salary.common.Result;
 import com.school.salary.entity.AuditLog;
 import com.school.salary.entity.Attendance;
 import com.school.salary.entity.Schedule;
+import com.school.salary.entity.SysUser;
+import com.school.salary.entity.Teacher;
 import com.school.salary.repository.AttendanceMapper;
 import com.school.salary.repository.AuditLogMapper;
 import com.school.salary.repository.ScheduleMapper;
+import com.school.salary.repository.SysUserMapper;
+import com.school.salary.repository.TeacherMapper;
 import com.school.salary.util.DateParseUtil;
 import io.jsonwebtoken.Claims;
 import jakarta.annotation.PostConstruct;
@@ -28,13 +32,15 @@ import java.util.Map;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/attendance")
+@RequestMapping("/attendance")
 @RequiredArgsConstructor
 public class AttendanceController {
 
     private final AttendanceMapper attendanceMapper;
     private final ScheduleMapper scheduleMapper;
     private final AuditLogMapper auditLogMapper;
+    private final SysUserMapper sysUserMapper;
+    private final TeacherMapper teacherMapper;
 
     @Value("${jwt.secret}")
     private String jwtSecret;
@@ -133,9 +139,15 @@ public class AttendanceController {
     @GetMapping("/my")
     public Result<List<Attendance>> my(@RequestHeader("Authorization") String authHeader) {
         Long userId = parseUserId(authHeader);
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException(401, "用户不存在");
+        }
+        if (user.getTeacherId() == null) {
+            return Result.ok(List.of());
+        }
         QueryWrapper<Attendance> wrapper = new QueryWrapper<>();
-        // 教师角色：按 teacher_id 查
-        wrapper.eq("teacher_id", userId);
+        wrapper.eq("teacher_id", user.getTeacherId());
         wrapper.orderByDesc("actual_start_time");
         return Result.ok(attendanceMapper.selectList(wrapper));
     }
@@ -165,7 +177,17 @@ public class AttendanceController {
             wrapper.le("actual_start_time", DateParseUtil.parseFlexible(startTo));
         }
         wrapper.orderByDesc("actual_start_time");
-        return Result.ok(attendanceMapper.selectPage(new Page<>(current, size), wrapper));
+        Page<Attendance> page = attendanceMapper.selectPage(new Page<>(current, size), wrapper);
+        // 回填教师姓名
+        for (Attendance a : page.getRecords()) {
+            if (a.getTeacherId() != null) {
+                Teacher t = teacherMapper.selectById(a.getTeacherId());
+                if (t != null) {
+                    a.setTeacherName(t.getName());
+                }
+            }
+        }
+        return Result.ok(page);
     }
 
     /**
@@ -185,6 +207,13 @@ public class AttendanceController {
 
         String action = body.get("action");
         String remark = body.get("remark");
+        // 兼容前端传 auditStatus(1通过/2驳回) 的写法
+        if (action == null && body.get("auditStatus") != null) {
+            action = "1".equals(body.get("auditStatus")) ? "APPROVE" : "REJECT";
+        }
+        if (remark == null && body.get("auditRemark") != null) {
+            remark = body.get("auditRemark");
+        }
         if (action == null) {
             throw new BizException("action 不能为空");
         }
@@ -261,6 +290,89 @@ public class AttendanceController {
 
         // 直接创建 + 待审核状态
         return Result.ok(attendance);
+    }
+
+    /**
+     * 简化打卡：教师端一次提交完成（不需要排课）
+     * body: { durationMinutes, studentCount, leaveCount, studentNames, startTime?, endTime? }
+     */
+    @PostMapping("/simple")
+    public Result<Attendance> simple(@RequestBody Map<String, Object> body,
+                                     @RequestHeader("Authorization") String authHeader) {
+        Long userId = parseUserId(authHeader);
+
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+        Teacher teacher = user.getTeacherId() == null ? null : teacherMapper.selectById(user.getTeacherId());
+        if (teacher == null) {
+            throw new BizException("当前账号未绑定教师档案，请联系管理员");
+        }
+
+        Integer duration = intOf(body, "durationMinutes", "duration_minutes");
+        Integer studentCount = intOf(body, "studentCount", "student_count");
+        Integer leaveCount = intOf(body, "leaveCount", "leave_count");
+        String studentNames = strOf(body, "studentNames", "student_names");
+        String exceptionNote = strOf(body, "exceptionNote", "exception_note");
+
+        if (duration == null || duration <= 0) {
+            throw new BizException("上课时长必须大于 0");
+        }
+        if (studentCount == null || studentCount < 0) {
+            throw new BizException("到课人数必填");
+        }
+        if (leaveCount == null) {
+            leaveCount = 0;
+        }
+
+        LocalDateTime end = LocalDateTime.now();
+        LocalDateTime start = end.minusMinutes(duration);
+        String startStr = strOf(body, "startTime", "start_time");
+        String endStr = strOf(body, "endTime", "end_time");
+        if (startStr != null && !startStr.isBlank()) {
+            try {
+                start = DateParseUtil.parseFlexible(startStr);
+            } catch (Exception ignore) { }
+        }
+        if (endStr != null && !endStr.isBlank()) {
+            try {
+                end = DateParseUtil.parseFlexible(endStr);
+            } catch (Exception ignore) { }
+        }
+
+        Attendance attendance = Attendance.builder()
+                .teacherId(teacher.getId())
+                .campusId(teacher.getCampusId())
+                .actualStartTime(start)
+                .actualEndTime(end)
+                .durationMinutes(duration)
+                .studentCount(studentCount)
+                .leaveCount(leaveCount)
+                .studentNames(studentNames)
+                .exceptionNote(exceptionNote)
+                .auditStatus(0)
+                .isMakeup(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        attendanceMapper.insert(attendance);
+
+        log.info("教师打卡: teacherId={}, duration={}min, students={}", teacher.getId(), duration, studentCount);
+        return Result.ok(attendance);
+    }
+
+    private Integer intOf(Map<String, Object> body, String camel, String snake) {
+        Object v = body.containsKey(camel) ? body.get(camel) : body.get(snake);
+        if (v == null || String.valueOf(v).isBlank()) {
+            return null;
+        }
+        return (int) Double.parseDouble(String.valueOf(v));
+    }
+
+    private String strOf(Map<String, Object> body, String camel, String snake) {
+        Object v = body.containsKey(camel) ? body.get(camel) : body.get(snake);
+        return v == null ? null : String.valueOf(v);
     }
 
     private Long parseUserId(String authHeader) {

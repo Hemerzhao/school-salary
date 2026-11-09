@@ -112,7 +112,7 @@ import { ref, reactive, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import dayjs from 'dayjs'
 import { ElMessage } from 'element-plus'
-import { Calculator, DocumentChecked, Tickets, User, Stamp, Money } from '@element-plus/icons-vue'
+import { DataAnalysis as Calculator, DocumentChecked, Tickets, User, Stamp, Money } from '@element-plus/icons-vue'
 import { calcMonth, validate, statementList } from '@/api/salary'
 
 const router = useRouter()

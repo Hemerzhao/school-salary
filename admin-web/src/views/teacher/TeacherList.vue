@@ -108,7 +108,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Search, Plus } from '@element-plus/icons-vue'
-import { page, create, update, remove } from '@/api/teacher'
+import { page as pageApi, create, update, remove } from '@/api/teacher'
 import { list as campusListApi } from '@/api/campus'
 
 const levels = [
@@ -145,7 +145,7 @@ const loadCampus = async () => {
 const load = async () => {
   loading.value = true
   try {
-    const res = await page({ ...filter, page: page.current, size: page.size })
+    const res = await pageApi({ ...filter, page: page.current, size: page.size })
     // 兼容后端返回 { list, total } 或直接数组
     if (Array.isArray(res)) {
       page.list = res

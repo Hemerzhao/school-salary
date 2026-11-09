@@ -73,6 +73,7 @@ public class AuthController {
         userInfo.put("name", user.getName());
         userInfo.put("role", user.getRole());
         userInfo.put("campusId", user.getCampusId());
+        userInfo.put("teacherId", user.getTeacherId());
 
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("token", token);
@@ -108,6 +109,52 @@ public class AuthController {
         userInfo.put("teacherId", user.getTeacherId());
         userInfo.put("status", user.getStatus());
         return Result.ok(userInfo);
+    }
+
+    /**
+     * 修改当前登录用户的密码
+     */
+    @PostMapping("/change-password")
+    public Result<String> changePassword(@RequestBody Map<String, String> body,
+                                         @RequestHeader("Authorization") String authHeader) {
+        String oldPassword = body.get("oldPassword");
+        String newPassword = body.get("newPassword");
+
+        if (oldPassword == null || oldPassword.isBlank()) {
+            throw new BizException("请输入原密码");
+        }
+        if (newPassword == null || newPassword.trim().length() < 6) {
+            throw new BizException("新密码至少 6 位");
+        }
+        if (oldPassword.equals(newPassword)) {
+            throw new BizException("新密码不能与原密码相同");
+        }
+
+        String token = parseToken(authHeader);
+        Claims claims;
+        try {
+            claims = jwtUtil.parseClaims(token);
+        } catch (Exception e) {
+            throw new BizException(401, "登录已过期，请重新登录");
+        }
+
+        Long userId = ((Number) claims.get("userId")).longValue();
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            throw new BizException("用户不存在");
+        }
+        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+            throw new BizException("原密码不正确");
+        }
+
+        // 只更新密码字段，避免覆盖其他列
+        SysUser update = new SysUser();
+        update.setId(userId);
+        update.setPassword(passwordEncoder.encode(newPassword));
+        sysUserMapper.updateById(update);
+
+        log.info("用户修改密码: {}", user.getUsername());
+        return Result.ok("密码修改成功");
     }
 
     private String parseToken(String authHeader) {

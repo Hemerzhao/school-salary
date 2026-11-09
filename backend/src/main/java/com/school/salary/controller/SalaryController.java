@@ -23,7 +23,7 @@ import java.util.*;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/salary")
+@RequestMapping("/salary")
 @RequiredArgsConstructor
 public class SalaryController {
 
