@@ -25400,6 +25400,13 @@ function mapSchedule(r) {
     createdAt: r.created_at
   };
 }
+async function classRosterNames(env, classId) {
+  if (!classId) return [];
+  const rows = await env.DB.prepare(
+    "SELECT name FROM class_student WHERE class_id = ? ORDER BY sort_no, id"
+  ).bind(classId).all();
+  return rows.results.map((r) => String(r.name)).filter(Boolean);
+}
 async function listSchedule(url, request, env) {
   await requireAdmin(request, env);
   const classId = intOrNull(url.searchParams.get("classId"));
@@ -25441,7 +25448,17 @@ async function listSchedule(url, request, env) {
      ${whereSql}
      ORDER BY t.name ASC, s.planned_date ASC, s.planned_time ASC, s.lesson_no ASC LIMIT 1000`
   ).bind(...params).all();
-  return ok((rows.results || []).map(mapSchedule));
+  const list = rows.results || [];
+  const needRoster = Array.from(new Set(list.filter((r) => !parseNames(r.student_names).length && r.class_id).map((r) => Number(r.class_id))));
+  const rosterMap = /* @__PURE__ */ new Map();
+  await Promise.all(needRoster.map(async (cid) => {
+    rosterMap.set(cid, await classRosterNames(env, cid));
+  }));
+  return ok(list.map((r) => {
+    const m = mapSchedule(r);
+    if (!m.students.length) m.students = rosterMap.get(Number(r.class_id)) || [];
+    return m;
+  }));
 }
 async function saveSchedule(request, env) {
   await requireAdmin(request, env);
@@ -25460,11 +25477,13 @@ async function saveSchedule(request, env) {
   if (durationMinutes < 30 || durationMinutes > 300) throw new ApiError(500, "\u5355\u8282\u65F6\u957F\u9700\u5728 30-300 \u5206\u949F\u4E4B\u95F4");
   let teacherId = 0;
   let excludeIds = [];
+  let rosterClassId = classId;
   if (id) {
     const old = await env.DB.prepare("SELECT * FROM class_schedule WHERE id = ?").bind(id).first();
     if (!old) return fail("\u8BFE\u6B21\u4E0D\u5B58\u5728");
     if (Number(old.status) === 1) return fail("\u8BE5\u8BFE\u6B21\u5DF2\u6253\u5361\uFF0C\u4E0D\u80FD\u4FEE\u6539\uFF1B\u5982\u9700\u6539\u52A8\u8BF7\u5148\u5220\u9664\u5BF9\u5E94\u6253\u5361\u8BB0\u5F55");
     teacherId = Number(old.teacher_id);
+    rosterClassId = Number(old.class_id);
     excludeIds = [id];
   } else {
     if (!classId) throw new ApiError(500, "\u8BF7\u9009\u62E9\u73ED\u7EA7");
@@ -25472,6 +25491,7 @@ async function saveSchedule(request, env) {
     if (!cls2) return fail("\u73ED\u7EA7\u4E0D\u5B58\u5728");
     teacherId = Number(cls2.teacher_id);
   }
+  const finalStudents = students.length ? students : await classRosterNames(env, rosterClassId);
   const conflict = await detectScheduleConflict(
     env,
     teacherId,
@@ -25484,7 +25504,7 @@ async function saveSchedule(request, env) {
     await env.DB.prepare(
       `UPDATE class_schedule SET planned_date = ?, planned_time = ?, duration_minutes = ?,
          classroom_id = ?, student_names = ?, remark = ?, updated_at = ? WHERE id = ?`
-    ).bind(date, time, durationMinutes, classroomId, students.join("\u3001"), remark, now, id).run();
+    ).bind(date, time, durationMinutes, classroomId, finalStudents.join("\u3001"), remark, now, id).run();
     return ok({ id });
   }
   const cls = await env.DB.prepare(
@@ -25497,7 +25517,7 @@ async function saveSchedule(request, env) {
     `INSERT INTO class_schedule
        (class_id, teacher_id, lesson_no, lesson_label, planned_date, planned_time, duration_minutes, classroom_id, student_names, status, remark, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
-  ).bind(classId, cls.teacher_id, lessonNo, lessonLabel, date, time, durationMinutes, classroomId, students.join("\u3001"), remark, now, now).run();
+  ).bind(classId, cls.teacher_id, lessonNo, lessonLabel, date, time, durationMinutes, classroomId, finalStudents.join("\u3001"), remark, now, now).run();
   return ok({ id: Number(res.meta.last_row_id), lessonNo, lessonLabel });
 }
 async function batchSchedule(request, env) {
@@ -25567,6 +25587,7 @@ async function batchSchedule(request, env) {
   }));
   const preConflict = await detectScheduleConflict(env, Number(cls.teacher_id), classroomId, preSlots);
   if (preConflict) return fail(preConflict);
+  const batchStudents = students.length ? students : await classRosterNames(env, classId);
   for (const d of dates) {
     const dayTime = dayTimes[String(weekdayOf(d))] || time;
     lessonNo += 1;
@@ -25576,7 +25597,7 @@ async function batchSchedule(request, env) {
         `INSERT INTO class_schedule
            (class_id, teacher_id, lesson_no, lesson_label, planned_date, planned_time, duration_minutes, classroom_id, student_names, status, remark, source, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'ADMIN', ?, ?)`
-      ).bind(classId, cls.teacher_id, lessonNo, label, d, dayTime, durationMinutes, classroomId, students.join("\u3001"), remark, now, now)
+      ).bind(classId, cls.teacher_id, lessonNo, label, d, dayTime, durationMinutes, classroomId, batchStudents.join("\u3001"), remark, now, now)
     );
     created.push(label + " " + d + " " + dayTime);
   }

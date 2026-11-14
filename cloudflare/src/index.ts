@@ -1203,6 +1203,15 @@ function mapSchedule(r: any) {
   };
 }
 
+// 班级名单（class_student）作为课次名单的兜底：快照为空时使用
+async function classRosterNames(env: Env, classId: number | null): Promise<string[]> {
+  if (!classId) return [];
+  const rows = await env.DB.prepare(
+    'SELECT name FROM class_student WHERE class_id = ? ORDER BY sort_no, id'
+  ).bind(classId).all();
+  return (rows.results as any[]).map(r => String(r.name)).filter(Boolean);
+}
+
 async function listSchedule(url: URL, request: Request, env: Env): Promise<Response> {
   await requireAdmin(request, env);
   const classId = intOrNull(url.searchParams.get('classId'));
@@ -1240,7 +1249,18 @@ async function listSchedule(url: URL, request: Request, env: Env): Promise<Respo
   )
     .bind(...params)
     .all();
-  return ok((rows.results || []).map(mapSchedule));
+  const list = (rows.results || []) as any[];
+  // 名单快照为空时回落到班级名单，保证排课列表能看到学生
+  const needRoster = Array.from(new Set(list.filter(r => !parseNames(r.student_names).length && r.class_id).map(r => Number(r.class_id))));
+  const rosterMap = new Map<number, string[]>();
+  await Promise.all(needRoster.map(async cid => {
+    rosterMap.set(cid, await classRosterNames(env, cid));
+  }));
+  return ok(list.map(r => {
+    const m = mapSchedule(r) as any;
+    if (!m.students.length) m.students = rosterMap.get(Number(r.class_id)) || [];
+    return m;
+  }));
 }
 
 /** 新增/编辑单节课次 */
@@ -1263,11 +1283,13 @@ async function saveSchedule(request: Request, env: Env): Promise<Response> {
 
   let teacherId: number = 0;
   let excludeIds: number[] = [];
+  let rosterClassId = classId;
   if (id) {
     const old = await env.DB.prepare('SELECT * FROM class_schedule WHERE id = ?').bind(id).first();
     if (!old) return fail('课次不存在');
     if (Number(old.status) === 1) return fail('该课次已打卡，不能修改；如需改动请先删除对应打卡记录');
     teacherId = Number(old.teacher_id);
+    rosterClassId = Number(old.class_id);
     excludeIds = [id];
   } else {
     if (!classId) throw new ApiError(500, '请选择班级');
@@ -1275,6 +1297,9 @@ async function saveSchedule(request: Request, env: Env): Promise<Response> {
     if (!cls) return fail('班级不存在');
     teacherId = Number(cls.teacher_id);
   }
+
+  // 未手填学生时，默认沿用班级名单快照
+  const finalStudents = students.length ? students : await classRosterNames(env, rosterClassId);
 
   const conflict = await detectScheduleConflict(env, teacherId, classroomId,
     [{ date, time, durationMinutes }], excludeIds);
@@ -1285,7 +1310,7 @@ async function saveSchedule(request: Request, env: Env): Promise<Response> {
       `UPDATE class_schedule SET planned_date = ?, planned_time = ?, duration_minutes = ?,
          classroom_id = ?, student_names = ?, remark = ?, updated_at = ? WHERE id = ?`
     )
-      .bind(date, time, durationMinutes, classroomId, students.join('、'), remark, now, id)
+      .bind(date, time, durationMinutes, classroomId, finalStudents.join('、'), remark, now, id)
       .run();
     return ok({ id });
   }
@@ -1301,7 +1326,7 @@ async function saveSchedule(request: Request, env: Env): Promise<Response> {
        (class_id, teacher_id, lesson_no, lesson_label, planned_date, planned_time, duration_minutes, classroom_id, student_names, status, remark, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)`
   )
-    .bind(classId, cls.teacher_id, lessonNo, lessonLabel, date, time, durationMinutes, classroomId, students.join('、'), remark, now, now)
+    .bind(classId, cls.teacher_id, lessonNo, lessonLabel, date, time, durationMinutes, classroomId, finalStudents.join('、'), remark, now, now)
     .run();
   return ok({ id: Number(res.meta.last_row_id), lessonNo, lessonLabel });
 }
@@ -1383,6 +1408,8 @@ async function batchSchedule(request: Request, env: Env): Promise<Response> {
   }));
   const preConflict = await detectScheduleConflict(env, Number(cls.teacher_id), classroomId, preSlots);
   if (preConflict) return fail(preConflict);
+  // 未手填学生时，批量生成默认沿用班级名单
+  const batchStudents = students.length ? students : await classRosterNames(env, classId);
   for (const d of dates) {
     const dayTime = dayTimes[String(weekdayOf(d))] || time;
     lessonNo += 1;
@@ -1392,7 +1419,7 @@ async function batchSchedule(request: Request, env: Env): Promise<Response> {
         `INSERT INTO class_schedule
            (class_id, teacher_id, lesson_no, lesson_label, planned_date, planned_time, duration_minutes, classroom_id, student_names, status, remark, source, created_at, updated_at)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, 'ADMIN', ?, ?)`
-      ).bind(classId, cls.teacher_id, lessonNo, label, d, dayTime, durationMinutes, classroomId, students.join('、'), remark, now, now)
+      ).bind(classId, cls.teacher_id, lessonNo, label, d, dayTime, durationMinutes, classroomId, batchStudents.join('、'), remark, now, now)
     );
     created.push(label + ' ' + d + ' ' + dayTime);
   }
