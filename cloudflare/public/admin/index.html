@@ -135,7 +135,7 @@ table tr:last-child td { border-bottom: none; }
 table tr:hover td { background: rgba(123,140,255,0.08); }
 
 /* ---- 按钮 ---- */
-.btn-sm { padding: 5px 12px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 4px; white-space: nowrap; }
+.btn-sm { display:inline-flex; align-items:center; justify-content:center; height:28px; padding:0 12px; border-radius:8px; border:none; font-size:12px; font-weight:600; cursor:pointer; margin-right:4px; white-space:nowrap; line-height:1; box-sizing:border-box; }
 .ops { white-space: nowrap; }
 .ops .btn-sm { margin: 2px 6px 2px 0; }
 .ops .btn-sm:last-child { margin-right: 0; }
@@ -264,7 +264,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
 /* 筛选栏 */
 .filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px; }
 .fitem { display:flex; flex-direction:column; gap:5px; }
-.fitem > label { font-size:12px; color: #c0c8ff; }
+.fitem > label { font-size:12px; color: #c0c8ff; line-height:1.4; min-height:17px; display:flex; align-items:flex-end; }
 .fitem input, .fitem select {
   height:36px; width:100%;
   background: rgba(255,255,255,0.86);
@@ -555,7 +555,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
           <div class="fitem"><label>选择教师</label><select id="trTeacher" onchange="renderTeacherRates()"></select></div>
           <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" id="trScopeBtn" style="height:36px;padding:0 14px;" onclick="toggleAllGrades()">显示全部年级</button></div>
           <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="saveTeacherRates()">保存</button></div>
-          <span class="hint" id="trSummary" style="padding-bottom:9px;"></span>
+          <div class="fitem" style="justify-content:flex-end;"><label>&nbsp;</label><span class="hint" id="trSummary" style="height:36px;display:flex;align-items:center;color:rgba(255,255,255,0.7);"></span></div>
         </div>
         <table class="tr-table">
           <thead><tr><th>年级</th><th>基础课时费</th><th>增量课时费</th><th>设置</th></tr></thead>
@@ -584,7 +584,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
             <label>&nbsp;</label>
             <button class="btn-sm" style="height:36px;padding:0 18px;background:#1d6f42;color:#fff;" onclick="exportSalary()">⬇ 导出 Excel</button>
           </div>
-          <span class="hint" id="salaryScope" style="padding-bottom:9px;">选「整月」= 查整月，选具体某天 = 只看当天</span>
+          <div class="fitem" style="justify-content:flex-end;flex:1;"><label>&nbsp;</label><span class="hint" id="salaryScope" style="height:36px;display:flex;align-items:center;color:rgba(255,255,255,0.7);">选「整月」= 查整月，选具体某天 = 只看当天</span></div>
         </div>
         <table>
           <thead><tr><th>教师</th><th>班级</th><th>班次</th><th>日期</th><th>时长</th><th>到课</th><th>适用规则</th><th>课时费</th><th>人数费</th><th>小计</th></tr></thead>
@@ -649,8 +649,8 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
           <div class="fitem"><label>年级</label><select id="stuGradeFilter" onchange="loadStudentsTab()"></select></div>
           <div class="fitem"><label>教师</label><select id="stuTeacherFilter" onchange="loadStudentsTab()"></select></div>
           <div class="fitem" style="flex:1;min-width:180px;"><label>搜索</label><input id="stuKeyword" placeholder="姓名 / 电话" onkeydown="if(event.key==='Enter')loadStudentsTab()"></div>
-          <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="loadStudentsTab()">查询</button></div>
-          <span class="hint" style="padding-bottom:9px;" id="stuCountHint"></span>
+          <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 20px;font-size:13px;" onclick="loadStudentsTab()">查询</button></div>
+          <div class="fitem" style="justify-content:flex-end;"><label>&nbsp;</label><span class="hint" id="stuCountHint" style="height:36px;display:flex;align-items:center;color:rgba(255,255,255,0.7);"></span></div>
         </div>
         <div id="studentTableWrap"></div>
         <div class="empty" id="studentEmpty" style="display:none;">暂无学生档案</div>
@@ -840,7 +840,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
       <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(-1)">上月</button></div>
       <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(0)">本月</button></div>
       <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(1)">下月</button></div>
-      <span class="hint" id="stuSchedSummary" style="padding-bottom:9px;"></span>
+      <div class="fitem" style="justify-content:flex-end;"><label>&nbsp;</label><span class="hint" id="stuSchedSummary" style="height:36px;display:flex;align-items:center;color:rgba(255,255,255,0.7);"></span></div>
     </div>
     <div id="studentSchedBody"></div>
     <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('studentSchedModal')">关闭</button></div>
