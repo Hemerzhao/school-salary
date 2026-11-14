@@ -253,6 +253,34 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
   border: 1px solid #ffccc7;
   line-height: 1.6;
 }
+/* 课次消耗 */
+.consume-sum { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+.consume-pill { display:inline-flex; align-items:baseline; gap:4px; background:#eef2ff; border:1px solid #d5ddfb;
+  border-radius:10px; padding:2px 9px; font-size:11px; color:#4a5a8a; white-space:nowrap; }
+.consume-pill b { font-size:14px; color:#3b5bdb; }
+.consume-pill.warn { background:#fff7e6; border-color:#ffe0a3; color:#8a6116; }
+.consume-pill.warn b { color:#b26a00; }
+.course-chip { display:inline-flex; align-items:center; gap:6px; background:#f8f9ff; border:1px solid #e0e5f7;
+  border-radius:10px; padding:3px 8px; margin:2px 4px 2px 0; font-size:11px; color:#4a5570; white-space:nowrap; }
+.course-chip b { color:#2b3555; font-size:12px; }
+.course-chip .dim { color:#8a94ac; }
+.scope-badge { font-size:10px; padding:1px 6px; border-radius:8px; font-weight:600; line-height:1.5; }
+.scope-subject { background:#e8efff; color:#3b5bdb; }
+.scope-package { background:#fff1e0; color:#b26a00; }
+.chip-bar { display:inline-block; width:56px; height:5px; border-radius:3px; background:#e6e9f5; overflow:hidden; }
+.chip-bar i { display:block; height:100%; border-radius:3px; background:linear-gradient(90deg,#6b7cff,#8e5bff); }
+.consume-hd { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin-bottom:14px; }
+.consume-hd .box { background:#f7f8ff; border:1px solid #e2e7f8; border-radius:12px; padding:10px 12px; }
+.consume-hd .box .k { font-size:11px; color:#7a86a6; margin-bottom:2px; }
+.consume-hd .box .v { font-size:20px; font-weight:700; color:#2b3555; }
+.consume-hd .box .v small { font-size:11px; font-weight:400; color:#8a94ac; margin-left:3px; }
+.course-card { border:1px solid #e6eaf7; border-radius:12px; padding:12px; margin-bottom:8px; background:#fbfcff; }
+.course-card .hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.course-card .hd .nm { font-size:14px; font-weight:600; color:#2b3555; }
+.course-card .bar { height:8px; border-radius:4px; background:#e9ecf7; overflow:hidden; margin:10px 0 6px; }
+.course-card .bar i { display:block; height:100%; background:linear-gradient(90deg,#6b7cff,#8e5bff); }
+.course-card .nums { display:flex; gap:14px; font-size:12px; color:#6a7590; flex-wrap:wrap; }
+.course-card .nums b { color:#2b3555; font-size:13px; }
 .avatar-lg { width: 64px; height: 64px; border-radius: 50%;
   background: linear-gradient(135deg,#6b7cff,#8e5bff);
   color:#fff; display:flex; align-items:center; justify-content:center;
@@ -641,7 +669,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
           <button class="btn btn-blue" style="width:auto;padding:0 22px;" onclick="saveStudent()">保存学生</button>
           <button class="btn btn-blue" style="width:auto;padding:0 22px;background:#e9ecef;color:#555;" onclick="resetStudentForm()">清空</button>
         </div>
-        <div class="hint" style="margin-top:8px;">学生可绑定多个套课（学生 + 课程）。剩余课时 = 总课时 − 教师打卡已上次数（请假不扣），与教师打卡自动联动。</div>
+        <div class="hint" style="margin-top:8px;">课次以学生为核心：学生每被点名出勤一次计 1 课次（请假/驳回不计）。单科课只扣所属班级的课次，课包可用全部学科出勤抵扣，插班也能准确归集。</div>
       </div>
       <div class="card">
         <h3>学生列表</h3>
@@ -796,7 +824,7 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
     <select id="courseTeacher"><option value="">不指定</option></select>
     <label style="font-size:12px;color:#888;">总课时（节）</label>
     <input id="courseTotal" type="number" min="0" max="999" placeholder="如：48">
-    <div class="hint">课时消耗 = 教师打卡出勤次数（请假不计）。后续可在学生档案里「增补/退课」调整剩余。</div>
+    <div class="hint">课次消耗 = 该学生被点名出勤的次数（请假不计）。单科课按所属班级统计，课包按该生全部出勤抵扣。</div>
     <div class="modal-actions">
       <button onclick="closeModal('courseModal')">取消</button>
       <button class="btn-primary" onclick="saveStudentCourse()">保存套课</button>
@@ -2067,10 +2095,34 @@ async function loadStudentsTab() {
     document.getElementById('stuCountHint').textContent = '共 ' + studentListCache.length + ' 名学生';
 
     const rowHtml = (s) => {
+      const sum = s.summary || {};
+      const attended = Number(sum.attendedLessons || 0);
+      const remain = Number(sum.remainingLessons || 0);
+      const totalAll = Number(sum.totalLessons || 0);
       const courses = (s.courses || []).length
-        ? s.courses.map(c => '<span class="stu-tag">' + escHtml(c.courseName) + (c.teacherName ? ' · ' + escHtml(c.teacherName) : '') +
-            ' · 已上 ' + c.usedLessons + '/' + c.totalLessons + ' · 剩 ' + c.remainingLessons + '</span>').join('')
+        ? s.courses.map(c => {
+            const pct = c.totalLessons > 0 ? Math.min(100, Math.round(c.usedLessons / c.totalLessons * 100)) : 0;
+            const badge = c.courseScope === 'PACKAGE'
+              ? '<span class="scope-badge scope-package">课包</span>'
+              : '<span class="scope-badge scope-subject">单科</span>';
+            return '<span class="course-chip">' + badge +
+              '<b>' + escHtml(c.courseName) + '</b>' +
+              (c.teacherName ? '<span class="dim">' + escHtml(c.teacherName) + '</span>' : '') +
+              '<span>已上 ' + c.usedLessons + (c.totalLessons > 0 ? '/' + c.totalLessons : '') + '</span>' +
+              '<span class="dim">' + (c.totalLessons > 0 ? '剩 ' + c.remainingLessons : '总课次未设置') + '</span>' +
+              (c.totalLessons > 0 ? '<span class="chip-bar"><i style="width:' + pct + '%"></i></span>' : '') +
+              (c.totalLessons > 0 && c.remainingLessons <= 0 ? '<span class="tag tag-rej">已用完</span>' : '') +
+              '</span>';
+          }).join('')
         : '<span style="color:#7a8aa8;">未添加套课</span>';
+      const sumHtml = '<div class="consume-sum">' +
+        '<span class="consume-pill"><b>' + attended + '</b>已上课次</span>' +
+        (totalAll > 0
+          ? '<span class="consume-pill' + (remain <= 0 ? ' warn' : '') + '">剩余 <b>' + remain + '</b>/ ' + totalAll + ' 总课次</span>'
+          : '<span class="consume-pill" style="background:#f6f7fb;border-color:#e2e5ef;color:#8a94ac;">总课次未设置</span>') +
+        (sum.subjectUsed ? '<span class="consume-pill" style="background:#f2f4fd;">单科 ' + sum.subjectUsed + '</span>' : '') +
+        (sum.packageUsed ? '<span class="consume-pill" style="background:#fff8ee;border-color:#ffe4bd;color:#8a6116;">课包 ' + sum.packageUsed + '</span>' : '') +
+        '</div>';
       const ops = '<button class="btn-sm btn-blue" onclick="openCourseModal(' + s.id + ')">+ 套课</button>' +
         '<button class="btn-sm btn-green" onclick="openStudentSched(' + s.id + ')">课表</button>' +
         '<button class="btn-sm btn-gray" onclick="openStudentDetail(' + s.id + ')">记录</button>' +
@@ -2078,7 +2130,8 @@ async function loadStudentsTab() {
         '<button class="btn-sm btn-gray" onclick="editStudent(' + s.id + ')">编辑</button>' +
         '<button class="btn-sm btn-red" onclick="delStudent(' + s.id + ')">删除</button>';
       return '<tr><td><b>' + escHtml(s.name) + '</b></td><td>' + escHtml(s.gradeName || '—') + '</td>' +
-        '<td>' + escHtml(s.phone || '—') + '</td><td style="max-width:420px;">' + courses + '</td>' +
+        '<td>' + escHtml(s.phone || '—') + '</td>' +
+        '<td style="min-width:320px;">' + sumHtml + courses + '</td>' +
         '<td class="ops">' + ops + '</td></tr>';
     };
 
@@ -2092,12 +2145,12 @@ async function loadStudentsTab() {
       keys.forEach(k => {
         const gname = (GRADE_OPTIONS.find(g => g[0] === k) || [])[1] || '未分年级';
         html += '<div style="margin:14px 0 6px;"><b style="color:#fff;">' + gname + '（' + groups[k].length + '）</b></div>';
-        html += '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead><tbody>';
+        html += '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>课次消耗 / 套课</th><th>操作</th></tr></thead><tbody>';
         html += groups[k].map(rowHtml).join('') + '</tbody></table>';
       });
       wrap.innerHTML = html;
     } else {
-      wrap.innerHTML = '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead><tbody>' +
+      wrap.innerHTML = '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>课次消耗 / 套课</th><th>操作</th></tr></thead><tbody>' +
         studentListCache.map(rowHtml).join('') + '</tbody></table>';
     }
   } catch(e) {
@@ -2226,19 +2279,45 @@ async function openStudentDetail(id) {
   try {
     const d = await api('/student/detail?id=' + id);
     studentDetailCache = d;
-    document.getElementById('studentDetailTitle').textContent = d.student.name + ' · 上课记录';
-    const coursesHtml = d.courses.length ? d.courses.map(c =>
-      '<div style="border:1px solid #eef0f4;border-radius:8px;padding:10px;margin-bottom:8px;">' +
-      '<div style="font-size:14px;color:#333;font-weight:600;">' + escHtml(c.courseName) + '</div>' +
-      '<div style="font-size:12px;color:#888;margin-top:4px;">老师：' + escHtml(c.teacherName || '未指定') +
-      ' · 总课时：' + c.totalLessons + ' · 已上：' + c.usedLessons + ' · 剩余：<b style="color:#4a6cf7;">' + c.remainingLessons + '</b>' +
-      (c.remainingLessons <= 0 ? ' <span class="tag tag-rej">课时已用完</span>' : '') + '</div>' +
-      '</div>').join('') : '<div class="empty">未添加套课</div>';
-    const recordsHtml = d.records.length ? '<table><thead><tr><th>日期</th><th>时间</th><th>课程</th><th>老师</th><th>状态</th></tr></thead><tbody>' +
+    document.getElementById('studentDetailTitle').textContent = d.student.name + ' · 课次消耗与上课记录';
+    const sm = d.summary || { attendedLessons: 0, remainingLessons: 0, totalLessons: 0, subjectUsed: 0, packageUsed: 0 };
+    const statBox = (k, v, unit) => '<div class="box"><div class="k">' + k + '</div><div class="v">' + v + (unit ? '<small>' + unit + '</small>' : '') + '</div></div>';
+    const headHtml = '<div class="consume-hd">' +
+      statBox('已上课次', sm.attendedLessons, '次') +
+      statBox('剩余课次', sm.totalLessons > 0 ? sm.remainingLessons : '—', sm.totalLessons > 0 ? '次' : '') +
+      statBox('单科扣除', sm.subjectUsed, '次') +
+      statBox('课包扣除', sm.packageUsed, '次') +
+      '</div>' +
+      '<div style="font-size:12px;color:#7a8aa6;margin:-6px 0 12px;">' +
+      (sm.totalLessons > 0 ? '已购总课次 <b style="color:#2b3555;">' + sm.totalLessons + '</b> 次 · ' : '尚未录入总课次 · ') +
+      '按学生点名出勤计算，请假不计</div>';
+    const coursesHtml = d.courses.length ? d.courses.map(c => {
+      const pct = c.totalLessons > 0 ? Math.min(100, Math.round(c.usedLessons / c.totalLessons * 100)) : 0;
+      const badge = c.courseScope === 'PACKAGE'
+        ? '<span class="scope-badge scope-package">课包</span>'
+        : '<span class="scope-badge scope-subject">单科</span>';
+      return '<div class="course-card">' +
+        '<div class="hd">' + badge + '<span class="nm">' + escHtml(c.courseName) + '</span>' +
+        '<span style="font-size:12px;color:#8a94ac;">' + escHtml(c.teacherName || '未指定老师') + '</span>' +
+        (c.totalLessons > 0 && c.remainingLessons <= 0 ? '<span class="tag tag-rej">课次已用完</span>' : '') +
+        (c.totalLessons > 0 && c.overLessons > 0 ? '<span class="tag tag-rej">超上 ' + c.overLessons + ' 次</span>' : '') +
+        (c.totalLessons > 0 ? '' : '<span class="tag tag-wait">总课次未设置</span>') +
+        '</div>' +
+        (c.totalLessons > 0 ? '<div class="bar"><i style="width:' + pct + '%"></i></div>' : '') +
+        '<div class="nums"><span>已上 <b>' + c.usedLessons + '</b> 次</span>' +
+        '<span>共 <b>' + (c.totalLessons > 0 ? c.totalLessons : '—') + '</b> 次</span>' +
+        '<span>剩余 <b style="color:#3b5bdb;">' + (c.totalLessons > 0 ? c.remainingLessons : '—') + '</b> 次</span>' +
+        (c.adjustNote ? '<span style="color:#b26a00;">' + escHtml(c.adjustNote) + '</span>' : '') + '</div>' +
+        '</div>';
+    }).join('') : '<div class="empty">未添加套课</div>';
+    const recordsHtml = d.records.length ? '<table><thead><tr><th>日期</th><th>时间</th><th>课程</th><th>课次</th><th>老师</th><th>状态</th></tr></thead><tbody>' +
       d.records.map(r => '<tr><td>' + escHtml(r.date) + '</td><td>' + escHtml(r.time) + '</td><td>' + escHtml(r.courseName) +
-        '</td><td>' + escHtml(r.teacherName) + '</td><td>' + (r.present ? '<span class="tag tag-ok">已上课</span>' : '<span class="tag tag-wait">请假</span>') + '</td></tr>').join('') +
-      '</tbody></table>' : '<div class="empty">暂无上课记录（教师打卡后自动同步）</div>';
-    document.getElementById('studentDetailBox').innerHTML = coursesHtml + '<h3 style="font-size:14px;margin:14px 0 10px;">最近上课记录</h3>' + recordsHtml;
+        '</td><td style="color:#6a7590;">' + escHtml(r.lessonLabel || '—') + '</td><td>' + escHtml(r.teacherName) + '</td><td>' +
+        (r.present ? '<span class="tag tag-ok">出勤 · 计 1 次</span>' : '<span class="tag tag-wait">请假 · 不计</span>') + '</td></tr>').join('') +
+      '</tbody></table>' : '<div class="empty">暂无上课记录（教师点名打卡后自动同步）</div>';
+    document.getElementById('studentDetailBox').innerHTML = headHtml +
+      '<h3 style="font-size:14px;margin:14px 0 10px;">套课课次</h3>' + coursesHtml +
+      '<h3 style="font-size:14px;margin:14px 0 10px;">最近上课记录</h3>' + recordsHtml;
     document.getElementById('studentDetailModal').classList.add('show');
   } catch(e) { toast(e.message); }
 }

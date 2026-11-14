@@ -137,18 +137,20 @@ function render(data) {
   const s = data.student;
   const courses = data.courses || [];
   const records = data.records || [];
-  const totalAll = courses.reduce((n, c) => n + Number(c.totalLessons || 0), 0);
-  const usedAll = courses.reduce((n, c) => n + Number(c.usedLessons || 0), 0);
-  const remainAll = courses.reduce((n, c) => n + Number(c.remainingLessons || 0), 0);
+  const sm = data.summary || {};
+  const totalAll = Number(sm.totalLessons != null ? sm.totalLessons : courses.reduce((n, c) => n + Number(c.totalLessons || 0), 0));
+  const usedAll = Number(sm.attendedLessons != null ? sm.attendedLessons : courses.reduce((n, c) => n + Number(c.usedLessons || 0), 0));
+  const remainAll = Number(sm.remainingLessons != null ? sm.remainingLessons : courses.reduce((n, c) => n + Number(c.remainingLessons || 0), 0));
 
   const courseHtml = courses.length ? courses.map(c => {
     const pct = c.totalLessons > 0 ? Math.min(100, Math.round(c.usedLessons / c.totalLessons * 100)) : 0;
+    const hasTotal = c.totalLessons > 0;
     return '<div class="course">' +
       '<div class="top"><div><div class="cname">' + esc(c.courseName) + '</div>' +
       '<div class="teacher">老师：' + esc(c.teacherName || '未指定') + '</div></div>' +
-      '<div class="remain ' + (c.remainingLessons <= 0 ? 'zero' : '') + '">剩 ' + c.remainingLessons + ' 节</div></div>' +
+      '<div class="remain ' + (hasTotal && c.remainingLessons <= 0 ? 'zero' : '') + '">' + (hasTotal ? '剩 ' + c.remainingLessons + ' 节' : '总课次未设置') + '</div></div>' +
       '<div class="bar"><span style="width:' + pct + '%"></span></div>' +
-      '<div class="nums"><span>已上 ' + c.usedLessons + ' 节</span><span>共 ' + c.totalLessons + ' 节</span></div>' +
+      '<div class="nums"><span>已上 ' + c.usedLessons + ' 节</span><span>共 ' + (hasTotal ? c.totalLessons + ' 节' : '—') + '</span></div>' +
       '</div>';
   }).join('') : '<div class="empty">老师还没有为你添加套课</div>';
 
@@ -163,7 +165,7 @@ function render(data) {
   document.getElementById('app').innerHTML =
     '<div class="hero"><div class="name">' + esc(s.name) + '</div>' +
     '<div class="meta">' + esc(s.gradeName || '未设置年级') + '</div>' +
-    '<div class="total"><div><b>' + usedAll + '</b>已上课</div><div><b>' + remainAll + '</b>剩余课时</div><div><b>' + totalAll + '</b>总课时</div></div></div>' +
+    '<div class="total"><div><b>' + usedAll + '</b>已上课次</div><div><b>' + remainAll + '</b>剩余课次</div><div><b>' + totalAll + '</b>总课次</div></div></div>' +
     '<div class="card"><h3><span class="dot"></span>我的套课</h3>' + courseHtml + '</div>' +
     '<div class="card"><h3><span class="dot"></span>最近上课记录</h3>' + recordHtml + '</div>' +
     '<div class="foot">数据来自老师打卡记录 · 请假不扣课时</div>';

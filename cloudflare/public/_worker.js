@@ -26494,19 +26494,59 @@ function randomHexToken(bytes = 16) {
   const arr = crypto.getRandomValues(new Uint8Array(bytes));
   return Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
-async function studentUsedLessons(env, classId, studentName) {
-  if (!classId) return 0;
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS c FROM attendance
-     WHERE class_id = ? AND audit_status IN (0, 1)
-       AND instr('\u3001' || COALESCE(present_names, '') || '\u3001', ?) > 0`
-  ).bind(classId, "\u3001" + studentName + "\u3001").first();
-  return Number(row?.c || 0);
+async function studentAttendanceByClass(env, studentName) {
+  const rows = await env.DB.prepare(
+    `SELECT class_id, COUNT(*) AS c FROM attendance
+     WHERE audit_status IN (0, 1)
+       AND instr('\u3001' || COALESCE(present_names, '') || '\u3001', ?) > 0
+     GROUP BY class_id`
+  ).bind("\u3001" + studentName + "\u3001").all();
+  const map2 = /* @__PURE__ */ new Map();
+  for (const r of rows.results || []) {
+    map2.set(String(r.class_id || ""), Number(r.c || 0));
+  }
+  return map2;
+}
+function allocateStudentLessons(courses, presentByClass) {
+  let attended = 0;
+  for (const n of presentByClass.values()) attended += n;
+  let subjectUsed = 0;
+  const seenClasses = /* @__PURE__ */ new Set();
+  const usedById = {};
+  for (const c of courses) {
+    if (c.courseScope !== "SUBJECT") continue;
+    const key = String(c.classId || "");
+    if (!key || seenClasses.has(key)) {
+      usedById[c.id] = 0;
+      continue;
+    }
+    seenClasses.add(key);
+    const used = presentByClass.get(key) || 0;
+    usedById[c.id] = used;
+    subjectUsed += used;
+  }
+  let unassigned = Math.max(0, attended - subjectUsed);
+  const packages = courses.filter((c) => c.courseScope === "PACKAGE");
+  packages.forEach((c, idx) => {
+    const total = Number(c.totalLessons || 0);
+    const isLast = idx === packages.length - 1;
+    const used = isLast ? unassigned : total > 0 ? Math.min(total, unassigned) : 0;
+    usedById[c.id] = used;
+    unassigned -= used;
+  });
+  for (const c of courses) {
+    const used = usedById[c.id] || 0;
+    const total = Number(c.totalLessons || 0);
+    c.usedLessons = used;
+    c.remainingLessons = Math.max(0, total - used);
+    c.overLessons = total > 0 ? Math.max(0, used - total) : 0;
+  }
+  return { attended, subjectUsed };
 }
 async function buildStudentPayload(env, student, withContact = true, withRecords = true) {
+  const studentName = String(student.name || "");
   const courseRows = await env.DB.prepare("SELECT * FROM student_course WHERE student_id = ? ORDER BY id").bind(student.id).all();
   const courses = [];
-  const records = [];
   for (const c of courseRows.results || []) {
     let className = "";
     let teacherId = c.teacher_id ? Number(c.teacher_id) : 0;
@@ -26522,8 +26562,6 @@ async function buildStudentPayload(env, student, withContact = true, withRecords
       const t = await env.DB.prepare("SELECT name FROM teacher WHERE id = ?").bind(teacherId).first();
       teacherName = String(t?.name || "");
     }
-    const used = await studentUsedLessons(env, c.class_id, String(student.name));
-    const total = Number(c.total_lessons || 0);
     courses.push({
       id: c.id,
       classId: c.class_id,
@@ -26534,34 +26572,40 @@ async function buildStudentPayload(env, student, withContact = true, withRecords
       courseScope: c.course_scope === "PACKAGE" ? "PACKAGE" : "SUBJECT",
       gradeCode: normalizeGradeCode(c.grade_code),
       adjustNote: String(c.adjust_note || ""),
-      totalLessons: total,
-      usedLessons: used,
-      remainingLessons: Math.max(0, total - used)
+      totalLessons: Number(c.total_lessons || 0)
     });
-    if (c.class_id && withRecords) {
-      const attRows = await env.DB.prepare(
-        `SELECT id, actual_start_time, class_name, lesson_label, present_names, leave_json, audit_status
-         FROM attendance
-         WHERE class_id = ? AND audit_status IN (0, 1)
-           AND (instr('\u3001' || COALESCE(present_names, '') || '\u3001', ?) > 0 OR instr(COALESCE(leave_json, ''), ?) > 0)
-         ORDER BY actual_start_time DESC, id DESC LIMIT 100`
-      ).bind(c.class_id, "\u3001" + String(student.name) + "\u3001", String(student.name)).all();
-      for (const a of attRows.results || []) {
-        const present = String(a.present_names || "").indexOf(String(student.name)) >= 0;
-        records.push({
-          date: String(a.actual_start_time || "").slice(0, 10),
-          time: String(a.actual_start_time || "").slice(11, 16),
-          className: String(a.class_name || className),
-          courseName: String(c.course_name || className || ""),
-          lessonLabel: String(a.lesson_label || ""),
-          teacherName,
-          present,
-          status: present ? "\u5DF2\u4E0A\u8BFE" : "\u8BF7\u5047"
-        });
-      }
-    }
   }
-  records.sort((a, b) => a.date + a.time < b.date + b.time ? 1 : -1);
+  const presentByClass = await studentAttendanceByClass(env, studentName);
+  const stat = allocateStudentLessons(courses, presentByClass);
+  const totalLessons = courses.reduce((a, c) => a + Number(c.totalLessons || 0), 0);
+  const records = [];
+  if (withRecords) {
+    const courseNameByClass = {};
+    for (const c of courses) if (c.classId) courseNameByClass[String(c.classId)] ||= c.courseName;
+    const attRows = await env.DB.prepare(
+      `SELECT a.id, a.class_id, a.actual_start_time, a.class_name, a.lesson_label,
+              a.present_names, a.leave_json, t.name AS teacher_name
+       FROM attendance a
+       LEFT JOIN teacher t ON t.id = a.teacher_id
+       WHERE a.audit_status IN (0, 1)
+         AND (instr('\u3001' || COALESCE(a.present_names, '') || '\u3001', ?) > 0 OR instr(COALESCE(a.leave_json, ''), ?) > 0)
+       ORDER BY a.actual_start_time DESC, a.id DESC LIMIT 100`
+    ).bind("\u3001" + studentName + "\u3001", studentName).all();
+    for (const a of attRows.results || []) {
+      const present = String("\u3001" + String(a.present_names || "") + "\u3001").indexOf("\u3001" + studentName + "\u3001") >= 0;
+      records.push({
+        date: String(a.actual_start_time || "").slice(0, 10),
+        time: String(a.actual_start_time || "").slice(11, 16),
+        className: String(a.class_name || ""),
+        courseName: courseNameByClass[String(a.class_id || "")] || String(a.class_name || ""),
+        lessonLabel: String(a.lesson_label || ""),
+        teacherName: String(a.teacher_name || ""),
+        present,
+        status: present ? "\u5DF2\u4E0A\u8BFE" : "\u8BF7\u5047"
+      });
+    }
+    records.sort((a, b) => a.date + a.time < b.date + b.time ? 1 : -1);
+  }
   const base = {
     id: student.id,
     name: student.name,
@@ -26574,7 +26618,18 @@ async function buildStudentPayload(env, student, withContact = true, withRecords
     base.remark = student.remark || "";
     base.shareToken = student.share_token || "";
   }
-  return { student: base, courses, records: records.slice(0, 60) };
+  const summary = {
+    attendedLessons: stat.attended,
+    // 已上课次（点名出勤累计）
+    subjectUsed: stat.subjectUsed,
+    // 单科学科课已扣除课次
+    packageUsed: Math.max(0, stat.attended - stat.subjectUsed),
+    // 课包扣除课次
+    totalLessons,
+    // 已购总课次
+    remainingLessons: Math.max(0, totalLessons - stat.attended)
+  };
+  return { student: base, courses, records: records.slice(0, 60), summary };
 }
 async function studentList(url, request, env) {
   await requireAdmin(request, env);
@@ -26622,19 +26677,17 @@ async function studentList(url, request, env) {
       const tRows = (await env.DB.prepare(`SELECT id, name FROM teacher WHERE id IN (${tp})`).bind(...teacherIds).all()).results || [];
       for (const t of tRows) teacherMap[t.id] = String(t.name || "");
     }
-    const allClassIds = [...new Set(courseRows.map((c) => c.class_id).filter(Boolean))];
-    const usedMap = {};
-    if (allClassIds.length) {
-      const ap = allClassIds.map(() => "?").join(",");
-      const attRows = (await env.DB.prepare(
-        `SELECT class_id, present_names FROM attendance WHERE class_id IN (${ap}) AND audit_status IN (0, 1)`
-      ).bind(...allClassIds).all()).results || [];
-      for (const a of attRows) {
-        const names = String(a.present_names || "").split("\u3001").filter(Boolean);
-        for (const nm of names) {
-          const key = a.class_id + "|" + nm;
-          usedMap[key] = (usedMap[key] || 0) + 1;
-        }
+    const nameSet = new Set(students.map((s) => String(s.name)));
+    const presentByStudent = {};
+    const attRows = (await env.DB.prepare(
+      "SELECT class_id, present_names FROM attendance WHERE audit_status IN (0, 1)"
+    ).all()).results || [];
+    for (const a of attRows) {
+      for (const nm of String(a.present_names || "").split("\u3001")) {
+        if (!nm || !nameSet.has(nm)) continue;
+        const m = presentByStudent[nm] ||= /* @__PURE__ */ new Map();
+        const key = String(a.class_id || "");
+        m.set(key, (m.get(key) || 0) + 1);
       }
     }
     for (const s of students) {
@@ -26642,8 +26695,6 @@ async function studentList(url, request, env) {
         const cls = c.class_id ? classMap[c.class_id] : null;
         const className = cls ? String(cls.name || "") : "";
         const tid = c.teacher_id || (cls ? cls.teacher_id : 0);
-        const total = Number(c.total_lessons || 0);
-        const used = usedMap[c.class_id + "|" + String(s.name)] || 0;
         return {
           id: c.id,
           classId: c.class_id,
@@ -26654,11 +26705,11 @@ async function studentList(url, request, env) {
           courseScope: c.course_scope === "PACKAGE" ? "PACKAGE" : "SUBJECT",
           gradeCode: normalizeGradeCode(c.grade_code),
           adjustNote: String(c.adjust_note || ""),
-          totalLessons: total,
-          usedLessons: used,
-          remainingLessons: Math.max(0, total - used)
+          totalLessons: Number(c.total_lessons || 0)
         };
       });
+      const stat = allocateStudentLessons(courses, presentByStudent[String(s.name)] || /* @__PURE__ */ new Map());
+      const totalLessons = courses.reduce((a, c) => a + Number(c.totalLessons || 0), 0);
       list.push({
         id: s.id,
         name: String(s.name || ""),
@@ -26668,7 +26719,14 @@ async function studentList(url, request, env) {
         remark: String(s.remark || ""),
         shareToken: String(s.share_token || ""),
         courses,
-        records: []
+        records: [],
+        summary: {
+          attendedLessons: stat.attended,
+          subjectUsed: stat.subjectUsed,
+          packageUsed: Math.max(0, stat.attended - stat.subjectUsed),
+          totalLessons,
+          remainingLessons: Math.max(0, totalLessons - stat.attended)
+        }
       });
     }
   }

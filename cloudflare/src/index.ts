@@ -2495,24 +2495,76 @@ function randomHexToken(bytes = 16): string {
   return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-/** 从打卡出勤记录统计某学生已上次数（请假与驳回不计） */
-async function studentUsedLessons(env: Env, classId: any, studentName: string): Promise<number> {
-  if (!classId) return 0;
-  const row = await env.DB.prepare(
-    `SELECT COUNT(*) AS c FROM attendance
-     WHERE class_id = ? AND audit_status IN (0, 1)
-       AND instr('、' || COALESCE(present_names, '') || '、', ?) > 0`
+/**
+ * 学生课次统计（以学生为核心，与老师上过多少课无关）
+ * 一次点名出勤 = 消耗 1 课次；请假、驳回不计。
+ * 返回 班级 -> 该生在该班被点名出勤的次数。
+ */
+async function studentAttendanceByClass(env: Env, studentName: string): Promise<Map<string, number>> {
+  const rows = await env.DB.prepare(
+    `SELECT class_id, COUNT(*) AS c FROM attendance
+     WHERE audit_status IN (0, 1)
+       AND instr('、' || COALESCE(present_names, '') || '、', ?) > 0
+     GROUP BY class_id`
   )
-    .bind(classId, '、' + studentName + '、')
-    .first();
-  return Number(row?.c || 0);
+    .bind('、' + studentName + '、')
+    .all();
+  const map = new Map<string, number>();
+  for (const r of (rows.results || []) as any[]) {
+    map.set(String(r.class_id || ''), Number(r.c || 0));
+  }
+  return map;
+}
+
+/**
+ * 按课程分配课次：
+ * - 单一学科课：只统计该生在该课程所属班级的点名出勤；
+ * - 课包课：用该生全部出勤课次抵扣已归属单一学科课的部分，避免重复扣减，多余课次按课程顺序依次抵扣。
+ */
+function allocateStudentLessons(courses: any[], presentByClass: Map<string, number>) {
+  let attended = 0;
+  for (const n of presentByClass.values()) attended += n;
+
+  let subjectUsed = 0;
+  const seenClasses = new Set<string>();
+  const usedById: Record<number, number> = {};
+  for (const c of courses) {
+    if (c.courseScope !== 'SUBJECT') continue;
+    const key = String(c.classId || '');
+    // 同一班级只归属一次，防止多门单科课重复扣减
+    if (!key || seenClasses.has(key)) { usedById[c.id] = 0; continue; }
+    seenClasses.add(key);
+    const used = presentByClass.get(key) || 0;
+    usedById[c.id] = used;
+    subjectUsed += used;
+  }
+
+  let unassigned = Math.max(0, attended - subjectUsed);
+  const packages = courses.filter(c => c.courseScope === 'PACKAGE');
+  packages.forEach((c, idx) => {
+    const total = Number(c.totalLessons || 0);
+    const isLast = idx === packages.length - 1;
+    // 前面的课包按额度抵扣，最后一个课包承接剩余课次（可体现超上）
+    const used = isLast ? unassigned : (total > 0 ? Math.min(total, unassigned) : 0);
+    usedById[c.id] = used;
+    unassigned -= used;
+  });
+
+  for (const c of courses) {
+    const used = usedById[c.id] || 0;
+    const total = Number(c.totalLessons || 0);
+    c.usedLessons = used;
+    c.remainingLessons = Math.max(0, total - used);
+    c.overLessons = total > 0 ? Math.max(0, used - total) : 0;
+  }
+  return { attended, subjectUsed };
 }
 
 /** 汇总学生档案：套课（含已上/剩余）+ 最近上课记录（来自教师打卡） */
 async function buildStudentPayload(env: Env, student: any, withContact = true, withRecords = true) {
+  const studentName = String(student.name || '');
   const courseRows = await env.DB.prepare('SELECT * FROM student_course WHERE student_id = ? ORDER BY id').bind(student.id).all();
   const courses: any[] = [];
-  const records: any[] = [];
 
   for (const c of (courseRows.results || []) as any[]) {
     let className = '';
@@ -2529,8 +2581,6 @@ async function buildStudentPayload(env: Env, student: any, withContact = true, w
       const t = await env.DB.prepare('SELECT name FROM teacher WHERE id = ?').bind(teacherId).first();
       teacherName = String(t?.name || '');
     }
-    const used = await studentUsedLessons(env, c.class_id, String(student.name));
-    const total = Number(c.total_lessons || 0);
     courses.push({
       id: c.id,
       classId: c.class_id,
@@ -2541,38 +2591,45 @@ async function buildStudentPayload(env: Env, student: any, withContact = true, w
       courseScope: c.course_scope === 'PACKAGE' ? 'PACKAGE' : 'SUBJECT',
       gradeCode: normalizeGradeCode(c.grade_code),
       adjustNote: String(c.adjust_note || ''),
-      totalLessons: total,
-      usedLessons: used,
-      remainingLessons: Math.max(0, total - used)
+      totalLessons: Number(c.total_lessons || 0)
     });
-
-    if (c.class_id && withRecords) {
-      const attRows = await env.DB.prepare(
-        `SELECT id, actual_start_time, class_name, lesson_label, present_names, leave_json, audit_status
-         FROM attendance
-         WHERE class_id = ? AND audit_status IN (0, 1)
-           AND (instr('、' || COALESCE(present_names, '') || '、', ?) > 0 OR instr(COALESCE(leave_json, ''), ?) > 0)
-         ORDER BY actual_start_time DESC, id DESC LIMIT 100`
-      )
-        .bind(c.class_id, '、' + String(student.name) + '、', String(student.name))
-        .all();
-      for (const a of (attRows.results || []) as any[]) {
-        const present = String(a.present_names || '').indexOf(String(student.name)) >= 0;
-        records.push({
-          date: String(a.actual_start_time || '').slice(0, 10),
-          time: String(a.actual_start_time || '').slice(11, 16),
-          className: String(a.class_name || className),
-          courseName: String(c.course_name || className || ''),
-          lessonLabel: String(a.lesson_label || ''),
-          teacherName,
-          present,
-          status: present ? '已上课' : '请假'
-        });
-      }
-    }
   }
 
-  records.sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
+  // 以学生为核心统计课次：只认该生被点名出勤的课，插班/换班都能正确归集
+  const presentByClass = await studentAttendanceByClass(env, studentName);
+  const stat = allocateStudentLessons(courses, presentByClass);
+  const totalLessons = courses.reduce((a, c) => a + Number(c.totalLessons || 0), 0);
+
+  const records: any[] = [];
+  if (withRecords) {
+    const courseNameByClass: Record<string, string> = {};
+    for (const c of courses) if (c.classId) courseNameByClass[String(c.classId)] ||= c.courseName;
+    const attRows = await env.DB.prepare(
+      `SELECT a.id, a.class_id, a.actual_start_time, a.class_name, a.lesson_label,
+              a.present_names, a.leave_json, t.name AS teacher_name
+       FROM attendance a
+       LEFT JOIN teacher t ON t.id = a.teacher_id
+       WHERE a.audit_status IN (0, 1)
+         AND (instr('、' || COALESCE(a.present_names, '') || '、', ?) > 0 OR instr(COALESCE(a.leave_json, ''), ?) > 0)
+       ORDER BY a.actual_start_time DESC, a.id DESC LIMIT 100`
+    )
+      .bind('、' + studentName + '、', studentName)
+      .all();
+    for (const a of (attRows.results || []) as any[]) {
+      const present = String('、' + String(a.present_names || '') + '、').indexOf('、' + studentName + '、') >= 0;
+      records.push({
+        date: String(a.actual_start_time || '').slice(0, 10),
+        time: String(a.actual_start_time || '').slice(11, 16),
+        className: String(a.class_name || ''),
+        courseName: courseNameByClass[String(a.class_id || '')] || String(a.class_name || ''),
+        lessonLabel: String(a.lesson_label || ''),
+        teacherName: String(a.teacher_name || ''),
+        present,
+        status: present ? '已上课' : '请假'
+      });
+    }
+    records.sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1));
+  }
 
   const base: any = {
     id: student.id,
@@ -2586,7 +2643,14 @@ async function buildStudentPayload(env: Env, student: any, withContact = true, w
     base.remark = student.remark || '';
     base.shareToken = student.share_token || '';
   }
-  return { student: base, courses, records: records.slice(0, 60) };
+  const summary = {
+    attendedLessons: stat.attended,          // 已上课次（点名出勤累计）
+    subjectUsed: stat.subjectUsed,           // 单科学科课已扣除课次
+    packageUsed: Math.max(0, stat.attended - stat.subjectUsed), // 课包扣除课次
+    totalLessons,                            // 已购总课次
+    remainingLessons: Math.max(0, totalLessons - stat.attended)
+  };
+  return { student: base, courses, records: records.slice(0, 60), summary };
 }
 
 async function studentList(url: URL, request: Request, env: Env): Promise<Response> {
@@ -2637,20 +2701,18 @@ async function studentList(url: URL, request: Request, env: Env): Promise<Respon
       const tRows = (await env.DB.prepare(`SELECT id, name FROM teacher WHERE id IN (${tp})`).bind(...teacherIds).all()).results || [];
       for (const t of tRows as any[]) teacherMap[t.id] = String(t.name || '');
     }
-    // 批量查已上课时（按班级+学生名）
-    const allClassIds = [...new Set((courseRows as any[]).map(c => c.class_id).filter(Boolean))];
-    const usedMap: Record<string, number> = {};
-    if (allClassIds.length) {
-      const ap = allClassIds.map(() => '?').join(',');
-      const attRows = (await env.DB.prepare(
-        `SELECT class_id, present_names FROM attendance WHERE class_id IN (${ap}) AND audit_status IN (0, 1)`
-      ).bind(...allClassIds).all()).results || [];
-      for (const a of attRows as any[]) {
-        const names = String(a.present_names || '').split('、').filter(Boolean);
-        for (const nm of names) {
-          const key = a.class_id + '|' + nm;
-          usedMap[key] = (usedMap[key] || 0) + 1;
-        }
+    // 批量统计全体出勤：以学生姓名为核心归集每人在各班的点名出勤次数（请假/驳回不计）
+    const nameSet = new Set(students.map((s: any) => String(s.name)));
+    const presentByStudent: Record<string, Map<string, number>> = {};
+    const attRows = (await env.DB.prepare(
+      'SELECT class_id, present_names FROM attendance WHERE audit_status IN (0, 1)'
+    ).all()).results || [];
+    for (const a of attRows as any[]) {
+      for (const nm of String(a.present_names || '').split('、')) {
+        if (!nm || !nameSet.has(nm)) continue;
+        const m = (presentByStudent[nm] ||= new Map<string, number>());
+        const key = String(a.class_id || '');
+        m.set(key, (m.get(key) || 0) + 1);
       }
     }
 
@@ -2659,23 +2721,30 @@ async function studentList(url: URL, request: Request, env: Env): Promise<Respon
         const cls = c.class_id ? classMap[c.class_id] : null;
         const className = cls ? String(cls.name || '') : '';
         const tid = c.teacher_id || (cls ? cls.teacher_id : 0);
-        const total = Number(c.total_lessons || 0);
-        const used = usedMap[c.class_id + '|' + String(s.name)] || 0;
         return {
           id: c.id, classId: c.class_id, className, teacherId: tid,
           teacherName: tid ? teacherMap[tid] || '' : '',
           courseName: String(c.course_name || className || '未命名课程'),
           courseScope: c.course_scope === 'PACKAGE' ? 'PACKAGE' : 'SUBJECT',
           gradeCode: normalizeGradeCode(c.grade_code), adjustNote: String(c.adjust_note || ''),
-          totalLessons: total, usedLessons: used, remainingLessons: Math.max(0, total - used)
+          totalLessons: Number(c.total_lessons || 0)
         };
       });
+      const stat = allocateStudentLessons(courses, presentByStudent[String(s.name)] || new Map());
+      const totalLessons = courses.reduce((a: number, c: any) => a + Number(c.totalLessons || 0), 0);
       list.push({
         id: s.id, name: String(s.name || ''),
         gradeCode: normalizeGradeCode(s.grade_code),
         gradeName: GRADE_LABELS[normalizeGradeCode(s.grade_code)] || '',
         phone: String(s.phone || ''), remark: String(s.remark || ''),
-        shareToken: String(s.share_token || ''), courses, records: []
+        shareToken: String(s.share_token || ''), courses, records: [],
+        summary: {
+          attendedLessons: stat.attended,
+          subjectUsed: stat.subjectUsed,
+          packageUsed: Math.max(0, stat.attended - stat.subjectUsed),
+          totalLessons,
+          remainingLessons: Math.max(0, totalLessons - stat.attended)
+        }
       });
     }
   }
