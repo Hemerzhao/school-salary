@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>教师工资统计系统</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+         min-height: 100vh; display: flex; align-items: center; justify-content: center;
+         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; }
+  .card { background: #fff; border-radius: 20px; padding: 44px 40px; width: 100%; max-width: 420px;
+          box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+  h1 { font-size: 22px; color: #333; text-align: center; margin-bottom: 6px; }
+  p { text-align: center; color: #999; font-size: 13px; margin-bottom: 28px; }
+  a { display: flex; align-items: center; justify-content: space-between; text-decoration: none;
+      padding: 18px 20px; border-radius: 14px; margin-bottom: 12px; color: #fff; font-weight: 600; font-size: 15px; }
+  a span { font-weight: 400; font-size: 12px; opacity: 0.9; }
+  .admin { background: linear-gradient(135deg, #667eea, #764ba2); }
+  .teacher { background: linear-gradient(135deg, #4facfe, #00c6fb); }
+  .tip { text-align: center; color: #bbb; font-size: 12px; margin-top: 18px; line-height: 1.7; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>教师工资统计系统</h1>
+    <p>请选择你的入口</p>
+    <a class="admin" href="/admin/">💼 管理后台 <span>审核 / 教师管理 / 工资计算</span></a>
+    <a class="teacher" href="/teacher/">📚 教师打卡 <span>提交上课记录</span></a>
+    <div class="tip">管理员：admin / admin123<br>教师：姓名登录，初始密码 = 姓名拼音小写 + 123456</div>
+  </div>
+</body>
+</html>

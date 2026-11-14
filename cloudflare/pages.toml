@@ -1,0 +1,11 @@
+name = "school-salary-hz"
+pages_build_output_dir = "public"
+compatibility_date = "2025-01-01"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "school_salary"
+database_id = "5ce127a9-c768-4790-8ea9-ba8306dc93b3"
+
+[vars]
+JWT_SECRET = "0e4c9a7b2f6d8c1a5e3b9f7d2c8a6e4b1f9d7c3a5e8b2f6d4c1a9e7b3f5d8c2a"

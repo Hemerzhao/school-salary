@@ -1,0 +1,2558 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>工资管理后台</title>
+<style>
+/* admin glassmorphism 2026 */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: radial-gradient(1200px 600px at 10% -10%, rgba(123,140,255,0.35), transparent 60%),
+              radial-gradient(900px 500px at 100% 10%, rgba(255,175,200,0.28), transparent 60%),
+              linear-gradient(135deg, #1e2360 0%, #3a1d6b 100%);
+  min-height: 100vh;
+  color: #eef;
+}
+
+/* ---- 登录 ---- */
+.login-wrap {
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh; padding: 20px;
+}
+.login-card {
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.32);
+  border-radius: 18px;
+  padding: 40px 36px; width: 360px;
+  box-shadow: 0 20px 60px rgba(10,15,60,0.35);
+  color: #eef;
+}
+.login-card h1 { text-align: center; color: #fff; margin-bottom: 4px; font-size: 22px; }
+.login-card p  { text-align: center; color: #c0c8ff; font-size: 13px; margin-bottom: 28px; }
+.field { margin-bottom: 16px; }
+.field label { display: block; color: #d6d9ff; font-size: 13px; margin-bottom: 6px; }
+.field input, .field select {
+  width: 100%; height: 48px;
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 12px;
+  padding: 0 14px; font-size: 16px; outline: none; color: #223;
+}
+.field input:focus, .field select:focus {
+  border-color: #b5c3ff;
+  box-shadow: 0 0 0 3px rgba(181,195,255,0.35);
+}
+.btn { border: none; border-radius: 10px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.btn-primary {
+  width: 100%; min-height: 48px;
+  background: linear-gradient(135deg, #6b7cff, #8e5bff);
+  color: #fff; border: none;
+  box-shadow: 0 6px 18px rgba(107,124,255,0.4);
+}
+.btn-blue {
+  background: linear-gradient(135deg, #6b7cff, #8e5bff);
+  color: #fff; padding: 10px 20px;
+  box-shadow: 0 6px 18px rgba(107,124,255,0.4);
+}
+.btn-blue:disabled { background: rgba(255,255,255,0.2); color: #999; cursor: not-allowed; box-shadow:none; }
+
+/* ---- 布局 ---- */
+.layout { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  background: rgba(10,15,40,0.38);
+  border-right: 1px solid rgba(255,255,255,0.12);
+  color: #e6e9ff;
+  position: relative; display: flex; flex-direction: column;
+}
+.sidebar .logo {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  font-size: 16px; font-weight: 600; color: #fff;
+}
+.sidebar .logo span { font-size: 12px; color: #8a93d8; font-weight: 400; display: block; margin-top: 2px; }
+.nav { padding: 12px 10px; flex: 1; }
+.nav-item {
+  padding: 12px 14px; cursor: pointer;
+  color: #c8ccee; font-size: 14px;
+  border-left: 3px solid transparent;
+  border-radius: 10px;
+  margin-bottom: 2px;
+  transition: all .15s;
+}
+.nav-item:hover { background: rgba(255,255,255,0.08); color: #fff; }
+.nav-item.active {
+  background: rgba(123,140,255,0.35);
+  color: #fff;
+  border-left-color: transparent;
+}
+.nav-badge { display: none; background: #ff4d4f; color: #fff; font-size: 11px; line-height: 16px; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 9px; text-align: center; margin-left: 6px; font-weight: 600; }
+.nav-badge.show { display: inline-block; }
+.sidebar .user {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255,255,255,0.1);
+}
+.sidebar .user .name { color: #fff; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.sidebar .user .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg,#6b7cff,#8e5bff); display: flex; align-items: center; justify-content: center; font-size: 12px; overflow: hidden; }
+.sidebar .user .avatar img { width: 100%; height: 100%; object-fit: cover; }
+.sidebar .user button { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); color: #c8ccee; padding: 4px 10px; border-radius: 6px; font-size: 11px; margin-top: 8px; cursor: pointer; }
+
+/* ---- 主内容 ---- */
+.main { flex: 1; padding: 24px 32px; min-width: 0; }
+.page-title { font-size: 20px; color: #fff; margin-bottom: 20px; letter-spacing: .5px; }
+
+.card {
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.32);
+  border-radius: 18px;
+  padding: 24px; margin-bottom: 20px;
+  box-shadow: 0 10px 30px rgba(10,15,60,0.25);
+  color: #eef;
+  overflow-x: auto;
+}
+.card h3 { font-size: 16px; color: #fff; margin-bottom: 16px; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ---- 表格 ---- */
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px;
+        background: rgba(255,255,255,0.92); border-radius: 12px; overflow: hidden; color: #223; }
+table th {
+  background: linear-gradient(180deg, #f5f7fb, #e9ecf4);
+  padding: 10px 12px; text-align: left; color: #445; font-weight: 600;
+  border-bottom: 1px solid #e2e5ef; white-space: nowrap;
+}
+table td { padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.05); color: #334; vertical-align: top; }
+table tr:last-child td { border-bottom: none; }
+table tr:hover td { background: rgba(123,140,255,0.08); }
+
+/* ---- 按钮 ---- */
+.btn-sm { padding: 5px 12px; border-radius: 8px; border: none; font-size: 12px; font-weight: 600; cursor: pointer; margin-right: 4px; white-space: nowrap; }
+.ops { white-space: nowrap; }
+.ops .btn-sm { margin: 2px 6px 2px 0; }
+.ops .btn-sm:last-child { margin-right: 0; }
+.btn-green { background: #10b981; color: #fff; box-shadow: 0 2px 6px rgba(16,185,129,0.3); }
+.btn-red   { background: #ef4444; color: #fff; box-shadow: 0 2px 6px rgba(239,68,68,0.3); }
+.btn-gray  { background: #eef2ff; color: #3b5bdb; border: 1px solid #c5d0f5; }
+
+/* ---- 标签 ---- */
+.tag {
+  display: inline-block; padding: 2px 10px; border-radius: 12px;
+  font-size: 11px; font-weight: 500; white-space: nowrap;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.tag-wait { background: rgba(255,243,205,0.55); color: #856404; }
+.tag-ok   { background: rgba(212,237,218,0.55); color: #155724; }
+.tag-rej  { background: rgba(248,215,218,0.55); color: #721c24; }
+
+/* ---- Toast ---- */
+.toast {
+  position: fixed; top: 20px; right: 20px; z-index: 999;
+  background: rgba(10,15,40,0.82); color: #fff;
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.18);
+  padding: 10px 20px; border-radius: 10px;
+  font-size: 13px; display: none; max-width: 360px;
+}
+.toast.show { display: block; animation: fadeIn .2s; }
+
+/* ---- Modal ---- */
+.modal {
+  position: fixed; inset: 0;
+  background: rgba(10,15,40,0.55);
+  display: none; align-items: center; justify-content: center;
+  z-index: 998; padding: 16px;
+}
+.modal.show { display: flex; }
+.modal-box {
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.32);
+  border-radius: 18px;
+  padding: 24px; width: 100%; max-width: 380px; max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(10,15,60,0.4);
+  color: #eef;
+}
+.modal-box h3 { margin-bottom: 16px; font-size: 16px; color: #fff; }
+.modal-box input, .modal-box select, .modal-box textarea {
+  width: 100%; padding: 10px 12px;
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 10px;
+  margin-bottom: 10px; font-size: 14px; box-sizing: border-box;
+  outline: none; color: #223; font-family: inherit;
+}
+.modal-box input:focus, .modal-box select:focus, .modal-box textarea:focus {
+  border-color: #b5c3ff;
+  box-shadow: 0 0 0 3px rgba(181,195,255,0.35);
+}
+.modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+.modal-actions button {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.12);
+  color: #eef; cursor: pointer; font-size: 14px;
+}
+.modal-actions .btn-primary {
+  background: linear-gradient(135deg, #6b7cff, #8e5bff);
+  border: none; color: #fff;
+  box-shadow: 0 6px 18px rgba(107,124,255,0.4);
+}
+@keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* ---- 其它 ---- */
+.empty { text-align: center; color: rgba(255,255,255,0.5); padding: 40px; font-size: 13px; }
+.formula {
+  background: rgba(255,255,255,0.10);
+  border: 1px dashed rgba(255,255,255,0.3);
+  border-radius: 10px; padding: 10px;
+  font-family: Menlo, monospace; font-size: 12px; color: #c7d2ff; margin-bottom: 12px;
+}
+textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: 10px;
+  padding: 10px 12px; font-size: 14px; font-family: inherit;
+  outline: none; resize: vertical; min-height: 90px; color: #223;
+}
+textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0.35); }
+.hint { font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px; }
+.month-summary { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+.month-stat { background:rgba(255,255,255,0.88); color:#334; border:1px solid rgba(255,255,255,0.55); border-radius:10px; padding:8px 12px; font-size:13px; }
+.month-stat b { color:#3b5bdb; font-size:16px; margin-left:4px; }
+.month-day { background:rgba(255,255,255,0.94); color:#334; border-radius:12px; overflow:hidden; margin-bottom:12px; }
+.month-day-head { background:#eef2ff; color:#3b5bdb; padding:10px 14px; font-weight:600; }
+.month-lesson { display:grid; grid-template-columns:140px minmax(0,1fr) auto; gap:12px; align-items:center; padding:12px 14px; border-bottom:1px solid #e8ebf3; }
+.month-lesson:last-child { border-bottom:none; }
+.month-time { color:#3b5bdb; font-weight:600; white-space:nowrap; }
+.month-class { font-weight:600; color:#223; }
+.month-meta { color:#667; font-size:12px; margin-top:4px; line-height:1.6; }
+.money { color: #aeb9ff; font-weight: 600; }
+.stu-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.10);
+  color: #d4dcff;
+  border-radius: 12px; padding: 2px 10px; font-size: 11px; margin: 2px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.leave-tag {
+  display: inline-block;
+  background: rgba(255,255,255,0.10);
+  color: #ffc7d6;
+  border-radius: 12px; padding: 2px 10px; font-size: 11px; margin: 2px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+.avatar-lg { width: 64px; height: 64px; border-radius: 50%;
+  background: linear-gradient(135deg,#6b7cff,#8e5bff);
+  color:#fff; display:flex; align-items:center; justify-content:center;
+  font-size: 22px; overflow:hidden;
+  box-shadow: 0 6px 18px rgba(107,124,255,0.4);
+}
+.avatar-lg img { width:100%; height:100%; object-fit:cover; }
+
+/* 筛选栏 */
+.filter-bar { display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px; }
+.fitem { display:flex; flex-direction:column; gap:5px; }
+.fitem > label { font-size:12px; color: #c0c8ff; }
+.fitem input, .fitem select {
+  height:36px;
+  background: rgba(255,255,255,0.86);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius:10px;
+  padding:0 10px; font-size:13px; outline:none; color: #223;
+}
+.fitem input:focus, .fitem select:focus {
+  border-color: #b5c3ff;
+  box-shadow: 0 0 0 3px rgba(181,195,255,0.35);
+}
+.toolbar { display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:14px; }
+.modal-box.wide { max-width: 880px; }
+
+.seat {
+  display:inline-block; padding:2px 10px; border-radius:12px;
+  font-size:11px; white-space:nowrap;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,0.25);
+}
+.seat-ok   { background: rgba(212,237,218,0.55); color: #155724; }
+.seat-wait { background: rgba(255,243,205,0.55); color: #856404; }
+.seat-done { background: rgba(233,236,239,0.55); color: #555; }
+
+/* 密码显示/隐藏 */
+.pwd-wrap { position:relative; display:block; width:100%; }
+.pwd-wrap input { width:100%; padding-right:46px !important; box-sizing:border-box; }
+.pwd-eye {
+  position:absolute; right:4px; top:50%; transform:translateY(-50%);
+  border:none; background:transparent; font-size:17px; line-height:1;
+  padding:8px; cursor:pointer; color:rgba(255,255,255,0.7);
+}
+
+/* ---- 教师分年级课时费：紧凑表格 ---- */
+.tr-table { min-width: 0; background: rgba(255,255,255,0.95); }
+.tr-table th { padding: 8px 10px; font-size: 12px; }
+.tr-table td { padding: 7px 10px; vertical-align: middle; }
+.tr-table .tr-grade { font-weight: 600; color: #1a2a6c; white-space: nowrap; }
+.tr-table .tr-grade span { display: block; font-weight: 400; font-size: 11px; color: #8890a8; margin-top: 1px; }
+.tr-table input { width: 100%; max-width: 130px; height: 34px; border: 1px solid #dfe3ee; border-radius: 8px; padding: 0 10px; font-size: 13px; color: #223; background: #fff; outline: none; }
+.tr-table input:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0.35); }
+.tr-table input.set { border-color: #10b981; background: #f2fdf8; }
+.tr-table .tr-flag { font-size: 11px; color: #8890a8; white-space: nowrap; }
+.tr-table .tr-flag.on { color: #0b8a63; font-weight: 600; }
+.tr-table tr.tr-hidden { display: none; }
+
+/* ---- 手机端 ≤768px ---- */
+@media (max-width: 768px) {
+  .layout { flex-direction: column; }
+  /* 侧边栏变成顶部玻璃条 */
+  .sidebar {
+    width: 100%; flex-direction: row; align-items: center;
+    padding: 10px 16px;
+    border-right: none; border-bottom: 1px solid rgba(255,255,255,0.12);
+    backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+    background: rgba(10,15,40,0.45);
+    position: sticky; top: 0; z-index: 10;
+  }
+  .sidebar .logo {
+    padding: 0; border: none; margin-right: auto;
+    font-size: 15px; font-weight: 600; color: #fff;
+  }
+  .sidebar .logo span { display: none; }
+  .sidebar .user {
+    padding: 0; border: none; margin-left: 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .sidebar .user button { margin-top: 0; padding: 4px 8px; }
+
+  /* nav 变成底部 56px 玻璃 Tab 栏 */
+  .nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    height: 56px;
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    background: rgba(10,15,40,0.72);
+    border-top: 1px solid rgba(255,255,255,0.18);
+    display: flex; justify-content: space-around; align-items: center;
+    padding: 0 4px; z-index: 20;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.4);
+  }
+  /* 移动端隐藏次要导航 */
+  .nav-item[data-tab="pwd"],
+  .nav-item[data-tab="account"],
+  .nav-item[data-tab="classrooms"],
+  .nav-item:not([data-tab]) { display: none !important; }
+  .nav-item {
+    flex: 1; text-align: center;
+    padding: 8px 2px; margin: 0 1px;
+    font-size: 11px; color: #c8ccee;
+    border-left: none; border-radius: 8px;
+    flex-direction: column;
+    line-height: 1.2;
+  }
+  .nav-item.active {
+    background: rgba(123,140,255,0.4);
+    color: #fff;
+  }
+  /* Tab 图标单独显示 */
+  .nav-item::first-letter {
+    font-size: 18px;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  /* 主内容留出底部 Tab 栏空间 */
+  .main { padding: 16px; padding-bottom: 70px; }
+
+  .grid2, .grid3 { grid-template-columns: 1fr; }
+  .card { padding: 16px; overflow-x: auto; }
+
+  /* modal 从底部上滑 */
+  .modal { padding: 0; align-items: flex-end; }
+  .modal-box, .modal-box.wide {
+    max-width: 100%; width: 100%;
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh; padding: 20px 16px;
+    animation: slideUp .3s ease;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: .6; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  /* 表格横向滚动 */
+  .card { overflow-x: auto; }
+  table { min-width: 520px; }
+
+  /* 小卡片/筛选栏 */
+  .filter-bar, .toolbar { flex-wrap: wrap; }
+
+  /* 输入框字号 16px 防 iOS 缩放；按钮最小高度 44px */
+  input, select, textarea,
+  .field input, .field select,
+  .modal-box input, .modal-box select, .modal-box textarea,
+  .fitem input, .fitem select { font-size: 16px; }
+  .btn, .btn-primary, .btn-blue, .modal-actions button,
+  .btn-sm, .sidebar .user button { min-height: 44px; padding: 8px 14px; }
+  .month-lesson { grid-template-columns:1fr; gap:6px; align-items:start; }
+  .month-time { white-space:normal; }
+
+  /* 分年级课时费表格：整体收窄，不横向滚动 */
+  .tr-table { min-width: 0; }
+  .tr-table th, .tr-table td { padding: 6px 6px; }
+  .tr-table th { font-size: 11px; }
+  .tr-table input { height: 38px; font-size: 15px; padding: 0 8px; }
+  .tr-table .tr-grade { font-size: 12px; white-space: normal; }
+}
+
+</style>
+</head>
+<body>
+
+<div id="loginPage" class="login-wrap" style="display:none;">
+  <div class="login-card">
+    <h1>💼 工资管理后台</h1>
+    <p>管理员登录</p>
+    <div class="field"><label>账号</label><input id="username" placeholder="管理员账号"></div>
+    <div class="field"><label>密码</label><input id="password" type="password" placeholder="密码" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="btn btn-primary" id="loginBtn" onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<div id="mainPage" class="layout" style="display:none;">
+  <div class="sidebar">
+    <div class="logo">💼 工资管理<span>教师工资统计系统</span></div>
+    <div class="nav">
+      <div class="nav-item active" data-tab="attendance" onclick="switchTab('attendance')">📋 打卡审核</div>
+      <div class="nav-item" data-tab="teachers" onclick="switchTab('teachers')">👥 教师管理</div>
+      <div class="nav-item" data-tab="classes" onclick="switchTab('classes')">🗓 排课管理<span class="nav-badge" id="navBadge"></span></div>
+      <div class="nav-item" data-tab="classrooms" onclick="switchTab('classrooms')">🏫 教室管理</div>
+      <div class="nav-item" data-tab="students" onclick="switchTab('students')">🎓 学生档案</div>
+      <div class="nav-item" data-tab="salary" onclick="switchTab('salary')">💰 工资计算</div>
+      <div class="nav-item" data-tab="pwd" onclick="switchTab('pwd')">🔐 改密审核</div>
+      <div class="nav-item" data-tab="account" onclick="switchTab('account')">⚙️ 账号设置</div>
+      <div class="nav-item" onclick="openTeacherPortal()">📱 教师端入口</div>
+    </div>
+    <div class="user">
+      <div class="name"><span class="avatar" id="sideAvatar">管</span><span id="adminName"></span></div>
+      <button onclick="logout()">退出登录</button>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- 打卡审核 -->
+    <div id="tab-attendance">
+      <h2 class="page-title">📋 打卡审核</h2>
+      <div class="card">
+        <h3>打卡记录</h3>
+        <table>
+          <thead><tr>
+            <th>教师</th><th>班级</th><th>班次</th><th>上课日期</th><th>时长</th><th>到课</th><th>请假</th><th>出勤详情</th><th>状态</th><th>操作</th>
+          </tr></thead>
+          <tbody id="attendanceTable"></tbody>
+        </table>
+        <div class="empty" id="attendanceEmpty" style="display:none;">暂无打卡记录</div>
+      </div>
+    </div>
+
+    <!-- 教师管理 -->
+    <div id="tab-teachers" style="display:none;">
+      <h2 class="page-title">👥 教师管理</h2>
+      <div class="card">
+        <h3>注册教师账号</h3>
+        <div class="grid3">
+          <div class="field"><label>姓名（同时作为登录账号）</label><input id="t_name" placeholder="如：赵老师"></div>
+          <div class="field"><label>手机号</label><input id="t_phone" placeholder="选填"></div>
+          <div class="field"><label>邮箱</label><input id="t_email" placeholder="用于接收打卡记录"></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>教师等级</label>
+            <select id="t_level"><option value="P0">P0 见习</option><option value="P1">P1 初级</option><option value="P2" selected>P2 中级</option><option value="P3">P3 高级</option></select>
+          </div>
+          <div class="field"><label>初始密码</label><input id="t_pwd_hint" value="姓名拼音小写+123456（自动生成）" disabled></div>
+        </div>
+        <button class="btn btn-blue" onclick="registerTeacher()">✓ 注册教师账号</button>
+        <div class="hint">注册后自动分配工号 T001、T002…，登录账号=姓名全称，初始密码=姓名拼音小写+123456（如 张老师 → zhanglaoshi123456）</div>
+      </div>
+      <div class="card">
+        <h3>教师列表</h3>
+        <table>
+          <thead><tr><th>工号</th><th>姓名/账号</th><th>手机</th><th>邮箱</th><th>等级</th><th>班级数</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="teacherTable"></tbody>
+        </table>
+        <div class="empty" id="teacherEmpty" style="display:none;">暂无教师</div>
+      </div>
+    </div>
+
+    <!-- 排课管理 -->
+    <div id="tab-classes" style="display:none;">
+      <h2 class="page-title">🗓 排课管理</h2>
+      <div class="card" style="padding:16px 24px;">
+        <div class="toolbar" style="margin-bottom:0;">
+          <button class="btn-sm btn-blue" style="padding:8px 14px;" onclick="openAllSched()">📋 全部教师课次</button>
+          <button class="btn-sm btn-gray" style="padding:8px 14px;" onclick="openReqAudit()">📨 教师申请<span class="nav-badge" id="reqBadge"></span></button>
+          <span class="hint">「全部教师课次」按教师 → 班级分组、组内按上课时间排序；教师端提交的排课申请与学生名单变更都在「教师申请」里审核。</span>
+        </div>
+      </div>
+      <div class="card">
+        <h3>新建班级（格式：年级-学科-班型，如 J2-语文-基础班）</h3>
+        <div class="grid3">
+          <div class="field"><label>年级</label><select id="c_grade"></select></div>
+          <div class="field"><label>学科</label><select id="c_subject"></select></div>
+          <div class="field"><label>班型</label><select id="c_type"></select></div>
+        </div>
+        <div class="grid3">
+          <div class="field"><label>班级名称（自动拼装，可手工覆盖）</label><input id="c_name" placeholder="J2-语文-基础班" oninput="c_name_manual=true"></div>
+          <div class="field"><label>班次代码</label><input id="c_code" value="D" placeholder="如：D（课次显示为 D1、D2）"></div>
+          <div class="field"><label>任课教师</label><select id="c_teacher"></select></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label>每节课时长</label>
+            <select id="c_duration"><option value="90">1.5 小时</option><option value="120" selected>2 小时</option></select>
+          </div>
+          <div class="field"><label>默认教室（可选）</label><select id="c_classroom"><option value="">不指定</option></select></div>
+        </div>
+        <div class="field"><label>学生名单（逗号或换行分隔）</label><input id="c_students" placeholder="张三,李四,王五"></div>
+        <button class="btn btn-blue" onclick="createClass()">✓ 创建班级</button>
+        <div class="hint">创建后在「班级列表」里点「课表」，按套课逐节或批量排课（上课日期、时间、学生名单），教师端即可按课表打卡。</div>
+      </div>
+      <div class="card">
+        <h3>班级列表</h3>
+        <table>
+          <thead><tr><th>班级名称</th><th>教室/时长</th><th>教师</th><th>学生数</th><th>已上</th><th>已排</th><th>下一课次</th><th>操作</th></tr></thead>
+          <tbody id="classTable"></tbody>
+        </table>
+        <div class="empty" id="classEmpty" style="display:none;">暂无班级</div>
+      </div>
+    </div>
+
+    <!-- 工资计算 -->
+    <div id="tab-salary" style="display:none;">
+      <h2 class="page-title">💰 工资计算</h2>
+      <div class="card">
+        <h3>⚙️ 工资规则（可修改）</h3>
+        <div class="formula">1 人成班：基础课时费 × 时长　|　2-4 人：增量基础课时费 × 时长　|　5 人以上：增量基础课时费 × 时长 + (人数-4) × 每人每小时增量 × 时长</div>
+        <div class="grid3">
+          <div class="field"><label>基础课时费（元/小时，1人）</label><input id="baseRate" type="number" step="0.01"></div>
+          <div class="field"><label>增量基础课时费（元/小时，2-4人）</label><input id="midRate" type="number" step="0.01"></div>
+          <div class="field"><label>超出4人每人每小时加收（元）</label><input id="extraPerPerson" type="number" step="0.01"></div>
+        </div>
+        <button class="btn btn-blue" onclick="saveSalaryConfig()">保存规则</button>
+      </div>
+      <div class="card">
+        <h3>👤 教师分年级课时费（单独设置）</h3>
+        <div class="formula">留空 = 沿用上方全局默认值。人数规则不变：1 人基础、2-4 人增量、5 人以上每人每小时再 +10 元。</div>
+        <div class="filter-bar">
+          <div class="fitem"><label>选择教师</label><select id="trTeacher" onchange="renderTeacherRates()"></select></div>
+          <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" id="trScopeBtn" style="height:36px;padding:0 14px;" onclick="toggleAllGrades()">显示全部年级</button></div>
+          <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="saveTeacherRates()">保存</button></div>
+          <span class="hint" id="trSummary" style="padding-bottom:9px;"></span>
+        </div>
+        <table class="tr-table">
+          <thead><tr><th>年级</th><th>基础课时费</th><th>增量课时费</th><th>设置</th></tr></thead>
+          <tbody id="trBody"></tbody>
+        </table>
+        <div class="empty" id="trEmpty" style="display:none;">该教师暂无带课年级，可点「显示全部年级」单独设置</div>
+      </div>
+      <div class="card">
+        <h3>工资明细（仅统计审核通过的记录）</h3>
+        <div class="filter-bar">
+          <div class="fitem">
+            <label>月份</label>
+            <input id="salaryMonth" type="month" onchange="onSalaryMonthChange()">
+          </div>
+          <div class="fitem">
+            <label>具体日期</label>
+            <select id="salaryDate" onchange="loadSalary()">
+              <option value="">整月（全部日期）</option>
+            </select>
+          </div>
+          <div class="fitem">
+            <label>&nbsp;</label>
+            <button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="loadSalary()">查询</button>
+          </div>
+          <div class="fitem">
+            <label>&nbsp;</label>
+            <button class="btn-sm" style="height:36px;padding:0 18px;background:#1d6f42;color:#fff;" onclick="exportSalary()">⬇ 导出 Excel</button>
+          </div>
+          <span class="hint" id="salaryScope" style="padding-bottom:9px;">选「整月」= 查整月，选具体某天 = 只看当天</span>
+        </div>
+        <table>
+          <thead><tr><th>教师</th><th>班级</th><th>班次</th><th>日期</th><th>时长</th><th>到课</th><th>适用规则</th><th>课时费</th><th>人数费</th><th>小计</th></tr></thead>
+          <tbody id="salaryTable"></tbody>
+        </table>
+        <div class="empty" id="salaryEmpty" style="display:none;">所选范围暂无已通过审核的打卡</div>
+      </div>
+      <div class="card">
+        <h3>教师工资汇总</h3>
+        <table>
+          <thead><tr><th>教师</th><th>课次</th><th>总时长</th><th>应发工资</th></tr></thead>
+          <tbody id="salarySummary"></tbody>
+          <tfoot><tr><td colspan="3" style="text-align:right;font-weight:600;">合计</td><td class="money" id="salaryTotal">0</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <!-- 教室管理 -->
+    <div id="tab-classrooms" style="display:none;">
+      <h2 class="page-title">🏫 教室管理</h2>
+      <div class="card">
+        <h3>新增教室</h3>
+        <div class="grid2">
+          <div class="field"><label>教室名称</label><input id="cr_name" placeholder="如：小教室1 / 大教室1"></div>
+          <div class="field"><label>类型</label><select id="cr_size"><option value="SMALL">小教室</option><option value="LARGE">大教室</option></select></div>
+        </div>
+        <button class="btn btn-blue" style="width:auto;padding:0 24px;" onclick="saveClassroom()">保存教室</button>
+        <div class="hint" style="margin-top:6px;">列表仅显示已启用教室；停用的教室不会出现在新排课的教室选项中，历史排课不受影响。</div>
+      </div>
+      <div class="card">
+        <h3>教室列表</h3>
+        <div class="hint" style="margin:-8px 0 12px;">当前使用按排课开始、结束时间自动计算；空闲只表示此刻没有课，不代表教室被停用。</div>
+        <table>
+          <thead><tr><th>名称</th><th>类型</th><th>当前使用</th><th>今日排课</th><th>操作</th></tr></thead>
+          <tbody id="classroomTable"></tbody>
+        </table>
+        <div class="empty" id="classroomEmpty" style="display:none;">暂无教室</div>
+      </div>
+    </div>
+
+    <!-- 学生档案 -->
+    <div id="tab-students" style="display:none;">
+      <h2 class="page-title">🎓 学生档案</h2>
+      <div class="card">
+        <h3>录入 / 编辑学生</h3>
+        <input id="stu_id" type="hidden">
+        <div class="grid3">
+          <div class="field"><label>学生姓名</label><input id="stu_name" placeholder="如：张小明"></div>
+          <div class="field"><label>年级</label><select id="stu_grade"></select></div>
+          <div class="field"><label>联系电话</label><input id="stu_phone" placeholder="选填"></div>
+        </div>
+        <div class="field"><label>备注</label><input id="stu_remark" placeholder="选填，如：家长诉求、上课习惯"></div>
+        <div style="display:flex;gap:10px;">
+          <button class="btn btn-blue" style="width:auto;padding:0 22px;" onclick="saveStudent()">保存学生</button>
+          <button class="btn btn-blue" style="width:auto;padding:0 22px;background:#e9ecef;color:#555;" onclick="resetStudentForm()">清空</button>
+        </div>
+        <div class="hint" style="margin-top:8px;">学生可绑定多个套课（学生 + 课程）。剩余课时 = 总课时 − 教师打卡已上次数（请假不扣），与教师打卡自动联动。</div>
+      </div>
+      <div class="card">
+        <h3>学生列表</h3>
+        <div class="filter-bar">
+          <div class="fitem"><label>搜索</label><input id="stuKeyword" placeholder="姓名 / 电话" onkeydown="if(event.key==='Enter')loadStudentsTab()"></div>
+          <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="loadStudentsTab()">查询</button></div>
+          <span class="hint" style="padding-bottom:9px;" id="stuCountHint"></span>
+        </div>
+        <table>
+          <thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead>
+          <tbody id="studentTable"></tbody>
+        </table>
+        <div class="empty" id="studentEmpty" style="display:none;">暂无学生档案</div>
+      </div>
+    </div>
+
+    <!-- 改密审核 -->
+    <div id="tab-pwd" style="display:none;">
+      <h2 class="page-title">🔐 教师修改密码审核</h2>
+      <div class="card">
+        <table>
+          <thead><tr><th>教师</th><th>登录账号</th><th>提交时间</th><th>状态</th><th>操作</th></tr></thead>
+          <tbody id="pwdTable"></tbody>
+        </table>
+        <div class="empty" id="pwdEmpty" style="display:none;">暂无改密申请</div>
+      </div>
+    </div>
+
+    <!-- 账号设置 -->
+    <div id="tab-account" style="display:none;">
+      <h2 class="page-title">⚙️ 账号设置</h2>
+
+      <div class="card">
+        <h3>我的资料</h3>
+        <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap;">
+          <div class="avatar-lg" id="myAvatarBox">管</div>
+          <div style="flex:1;min-width:240px;">
+            <div class="grid2">
+              <div class="field"><label>昵称</label><input id="myNickname"></div>
+              <div class="field"><label>账号</label><input id="myUsername"></div>
+              <div class="field"><label>姓名</label><input id="myName"></div>
+              <div class="field"><label>手机号</label><input id="myPhone"></div>
+              <div class="field"><label>邮箱</label><input id="myEmail"></div>
+              <div class="field"><label>头像</label><input id="myAvatarFile" type="file" accept="image/*" style="padding-top:10px;"></div>
+            </div>
+            <button class="btn btn-blue" onclick="saveMyProfile()">保存资料</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>修改密码（管理员直接生效）</h3>
+        <div class="grid2">
+          <div class="field"><label>原密码</label><input id="admOldPwd" type="password"></div>
+          <div class="field"><label>新密码（至少6位，仅英文/数字）</label><input id="admNewPwd" type="password"></div>
+        </div>
+        <button class="btn btn-blue" onclick="changeAdminPwd()">修改密码</button>
+      </div>
+
+      <div class="card">
+        <h3>管理员账号（最多 2 个）</h3>
+        <table>
+          <thead><tr><th>账号</th><th>昵称</th><th>手机</th><th>邮箱</th><th>操作</th></tr></thead>
+          <tbody id="adminTable"></tbody>
+        </table>
+        <div class="grid2" style="margin-top:16px;">
+          <div class="field"><label>新管理员账号</label><input id="newAdmUser" placeholder="如：finance"></div>
+          <div class="field"><label>初始密码（至少6位，仅英文/数字）</label><input id="newAdmPwd" type="password" placeholder="至少6位"></div>
+          <div class="field"><label>昵称</label><input id="newAdmNick"></div>
+          <div class="field"><label>邮箱</label><input id="newAdmEmail"></div>
+        </div>
+        <button class="btn btn-blue" onclick="createAdmin()">+ 创建管理员</button>
+      </div>
+
+      <div class="card">
+        <h3>邮件服务（打卡记录同步到教师邮箱）</h3>
+        <div class="formula">使用 Brevo 免费 API：在 brevo.com 注册 → SMTP &amp; API → API Keys 创建密钥，填入下方。发件邮箱需在 Brevo 中验证。</div>
+        <div class="grid2">
+          <div class="field"><label>Brevo API Key</label><input id="mailApiKey" placeholder="xkeysib-..."></div>
+          <div class="field"><label>发件邮箱</label><input id="mailFromEmail" placeholder="noreply@yourdomain.com"></div>
+          <div class="field"><label>发件人名称</label><input id="mailFromName"></div>
+        </div>
+        <button class="btn btn-blue" onclick="saveMail()">保存邮件设置</button>
+        <div class="hint" style="margin-top:10px;">未配置时，打卡仍正常保存，邮件状态显示“未配置”，邮件内容会记录在下表。</div>
+      </div>
+
+      <div class="card">
+        <h3>邮件发送记录</h3>
+        <table>
+          <thead><tr><th>教师</th><th>收件邮箱</th><th>主题</th><th>状态</th><th>时间</th></tr></thead>
+          <tbody id="mailTable"></tbody>
+        </table>
+        <div class="empty" id="mailEmpty" style="display:none;">暂无记录</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 教师编辑弹窗 -->
+<div class="modal" id="teacherModal">
+  <div class="modal-box">
+    <h3>编辑教师</h3>
+    <input id="e_id" type="hidden">
+    <label style="font-size:12px;color:#888;">姓名（同时是登录账号）</label>
+    <input id="e_name">
+    <label style="font-size:12px;color:#888;">手机号</label>
+    <input id="e_phone">
+    <label style="font-size:12px;color:#888;">邮箱</label>
+    <input id="e_email">
+    <label style="font-size:12px;color:#888;">等级</label>
+    <select id="e_level"><option value="P0">P0</option><option value="P1">P1</option><option value="P2">P2</option><option value="P3">P3</option></select>
+    <label style="font-size:12px;color:#888;">状态</label>
+    <select id="e_status"><option value="1">正常</option><option value="0">停用</option></select>
+    <div class="modal-actions">
+      <button onclick="closeModal('teacherModal')">取消</button>
+      <button class="btn-primary" onclick="saveTeacher()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 班级学生名单弹窗（支持中途新增/退出，不用新建班级） -->
+<div class="modal" id="studentsModal">
+  <div class="modal-box" style="max-width:460px;">
+    <h3>管理学生名单</h3>
+    <div class="hint" id="studentsInfo" style="margin-bottom:10px;"></div>
+    <textarea id="studentsText" style="min-height:200px;" placeholder="每行一个学生姓名"></textarea>
+    <div class="hint" style="margin-top:8px;">中途有新生加入：直接加一行；学生退出：删掉那一行。已提交的课次人数与工资是当时的快照，不会被改动。</div>
+    <div class="modal-actions">
+      <button onclick="closeModal('studentsModal')">取消</button>
+      <button class="btn-primary" onclick="saveClassStudents()">保存名单</button>
+    </div>
+  </div>
+</div>
+
+<!-- 学生套课弹窗 -->
+<div class="modal" id="courseModal">
+  <div class="modal-box">
+    <h3>添加套课</h3>
+    <div class="hint" id="courseStudentInfo" style="margin-bottom:10px;"></div>
+    <label style="font-size:12px;color:#888;">课时范围</label>
+    <select id="courseScope">
+      <option value="SUBJECT">单一学科（绑定某班级，请假不扣）</option>
+      <option value="PACKAGE">通用课包（多学科共享总课时）</option>
+    </select>
+    <label style="font-size:12px;color:#888;">关联班级（与教师打卡联动；可选）</label>
+    <select id="courseClass" onchange="onCourseClassChange()"></select>
+    <label style="font-size:12px;color:#888;">课程名称</label>
+    <input id="courseName" placeholder="如：英语基础班 / 数学一对一">
+    <label style="font-size:12px;color:#888;">任课教师（可选）</label>
+    <select id="courseTeacher"><option value="">不指定</option></select>
+    <label style="font-size:12px;color:#888;">总课时（节）</label>
+    <input id="courseTotal" type="number" min="0" max="999" placeholder="如：48">
+    <div class="hint">课时消耗 = 教师打卡出勤次数（请假不计）。后续可在学生档案里「增补/退课」调整剩余。</div>
+    <div class="modal-actions">
+      <button onclick="closeModal('courseModal')">取消</button>
+      <button class="btn-primary" onclick="saveStudentCourse()">保存套课</button>
+    </div>
+  </div>
+</div>
+
+<!-- 套课调整（增补课时 / 退课） -->
+<div class="modal" id="adjustModal">
+  <div class="modal-box">
+    <h3 id="adjustTitle">调整课时</h3>
+    <div class="hint" id="adjustInfo" style="margin-bottom:10px;"></div>
+    <label style="font-size:12px;color:#888;">类型</label>
+    <select id="adjustType"><option value="ADD">增补课时（加节）</option><option value="REFUND">退课（减节）</option></select>
+    <label style="font-size:12px;color:#888;">节数（正数）</label>
+    <input id="adjustDelta" type="number" min="1" max="999" placeholder="如：8">
+    <label style="font-size:12px;color:#888;">备注（选填）</label>
+    <input id="adjustNote" placeholder="如：暑假集训营 / 课程体系调整">
+    <div class="modal-actions">
+      <button onclick="closeModal('adjustModal')">取消</button>
+      <button class="btn-primary" onclick="submitAdjust()">提交</button>
+    </div>
+  </div>
+</div>
+
+<!-- 学生上课记录弹窗 -->
+<div class="modal" id="studentDetailModal">
+  <div class="modal-box wide">
+    <h3 id="studentDetailTitle">学生上课记录</h3>
+    <div id="studentDetailBox"></div>
+    <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('studentDetailModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 班级重命名弹窗（下拉选择年级/学科/班型） -->
+<div class="modal" id="renameClassModal">
+  <div class="modal-box" style="max-width:460px;">
+    <h3>重命名班级</h3>
+    <input id="rc_id" type="hidden">
+    <div class="hint" id="rc_current" style="margin-bottom:10px;"></div>
+    <label style="font-size:12px;color:#aaa;">年级</label>
+    <select id="rc_grade"></select>
+    <label style="font-size:12px;color:#aaa;">学科</label>
+    <select id="rc_subject"></select>
+    <label style="font-size:12px;color:#aaa;">班型（核心：基础班 / 卓越班）</label>
+    <select id="rc_type"></select>
+    <label style="font-size:12px;color:#aaa;">班次代码（如 D1 / A8Y-PY）</label>
+    <input id="rc_code">
+    <div class="modal-actions">
+      <button onclick="closeModal('renameClassModal')">取消</button>
+      <button class="btn-primary" onclick="submitRenameClass()">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 套课课表弹窗 -->
+<div class="modal" id="scheduleModal">
+  <div class="modal-box wide">
+    <h3 id="schedTitle">套课课表</h3>
+    <div class="hint" id="schedInfo" style="margin-bottom:12px;"></div>
+
+    <div class="toolbar">
+      <button class="btn-sm btn-blue" style="padding:8px 14px;" onclick="showSchedForm()">+ 添加单节课</button>
+      <button class="btn-sm btn-gray" style="padding:8px 14px;" onclick="showBatchForm()">⚡ 批量生成套课</button>
+      <span class="hint">课次号自动递增（如 G1、G2…），教师端按课表打卡，亦可微调后提交审核</span>
+    </div>
+
+    <div id="schedForm" style="display:none;background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:14px;">
+      <div class="filter-bar" style="margin-bottom:10px;">
+        <div class="fitem"><label>上课日期</label><input id="sc_date" type="date"></div>
+        <div class="fitem"><label>上课时间</label><input id="sc_time" type="time" value="18:30"></div>
+        <div class="fitem"><label>时长</label>
+          <select id="sc_duration"><option value="90">1.5 小时</option><option value="120" selected>2 小时</option></select>
+        </div>
+        <div class="fitem" style="flex:1;min-width:200px;"><label>学生名单（留空=沿用班级名单）</label><input id="sc_students" placeholder="张三,李四"></div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn-sm btn-green" style="padding:8px 16px;" onclick="saveSchedItem()">保存课次</button>
+        <button class="btn-sm btn-gray" style="padding:8px 16px;" onclick="hideSchedForms()">取消</button>
+      </div>
+    </div>
+
+    <div id="batchForm" style="display:none;background:#f8f9fb;border-radius:8px;padding:12px;margin-bottom:14px;">
+      <div class="filter-bar" style="margin-bottom:6px;">
+        <div class="fitem"><label>开始日期</label><input id="bt_start" type="date" onchange="rebuildWeekPlan()"></div>
+        <div class="fitem" style="width:110px;"><label>排几周</label><input id="bt_weeks" type="number" min="1" max="26" value="12" onchange="rebuildWeekPlan()"></div>
+        <div class="fitem"><label>上课时间（默认）</label><input id="bt_time" type="time" value="18:30" onchange="syncDayTimeDefaults()"></div>
+        <div class="fitem" style="width:150px;"><label>起始课次（第几节）</label><input id="bt_start_no" type="number" min="1" max="999" placeholder="自动顺延" oninput="updateBatchHint()"></div>
+        <div class="fitem"><label>时长</label>
+          <select id="bt_duration"><option value="90">1.5 小时</option><option value="120" selected>2 小时</option></select>
+        </div>
+        <div class="fitem"><label>教室（可选）</label><select id="bt_classroom" onchange="updateBatchHint()"><option value="">不指定</option></select></div>
+        <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 16px;" onclick="batchGenerate()">生成</button></div>
+        <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 16px;" onclick="hideSchedForms()">取消</button></div>
+      </div>
+      <div class="hint" style="margin-bottom:8px;">逐周勾选上课日（每周可选多天，如单周两节、双周一节）。未勾选的周不排课，开始日期之前的日期自动跳过。</div>
+      <div id="btPlanGrid" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div id="btDayTimes" style="margin-top:10px;"></div>
+      <div class="hint" id="btHint" style="margin-top:8px;"></div>
+    </div>
+
+    <table>
+      <thead><tr><th>课次</th><th>上课时间</th><th>时长</th><th>学生名单</th><th>状态</th><th>问题说明</th><th>操作</th></tr></thead>
+      <tbody id="scheduleTable"></tbody>
+    </table>
+    <div class="empty" id="scheduleEmpty" style="display:none;">还没有排课</div>
+    <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('scheduleModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 全部教师课次 -->
+<div class="modal" id="allSchedModal">
+  <div class="modal-box wide" style="max-width:980px;">
+    <h3 id="allSchedTitle">全部教师课次</h3>
+    <div class="filter-bar">
+      <div class="fitem"><label>教师</label><select id="allTeacher" onchange="loadAllSched()"><option value="">全部教师</option></select></div>
+      <div class="fitem"><label>月份</label><input id="allMonth" type="month" onchange="loadAllSched()"></div>
+      <div class="fitem"><label>快速切换</label><div style="display:flex;gap:4px;flex-wrap:wrap;">
+        <button class="btn-sm btn-gray" onclick="shiftAllMonth(-1)">‹ 上月</button>
+        <button class="btn-sm btn-gray" onclick="setAllMonth(currentMonthValue())">本月</button>
+        <button class="btn-sm btn-gray" onclick="shiftAllMonth(1)">下月 ›</button>
+      </div></div>
+      <div class="fitem"><label>状态</label>
+        <select id="allStatus" onchange="loadAllSched()"><option value="">全部</option><option value="0">待打卡</option><option value="1">已打卡</option></select>
+      </div>
+      <div class="fitem"><label>&nbsp;</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;height:36px;"><input type="checkbox" id="allIssue" style="width:16px;height:16px;" onchange="loadAllSched()"> 仅看有问题</label>
+      </div>
+    </div>
+    <div id="allSchedSummary"></div>
+    <div id="allSchedBody"><div class="empty">加载中...</div></div>
+    <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('allSchedModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 教师申请审核（排课 + 学生名单变更） -->
+<div class="modal" id="reqAuditModal">
+  <div class="modal-box wide" style="max-width:860px;">
+    <h3>教师申请审核</h3>
+    <div class="hint" style="margin-bottom:10px;">排课通过后自动生成课次（班次号顺延）；学生名单变更通过后立即生效，并同步到未上过的课次。</div>
+    <h3 style="font-size:14px;margin:6px 0 8px;">📅 排课申请</h3>
+    <div id="reqAuditBody"><div class="empty">加载中...</div></div>
+    <h3 style="font-size:14px;margin:18px 0 8px;">👥 学生名单变更</h3>
+    <div id="studentAuditBody"><div class="empty">加载中...</div></div>
+    <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('reqAuditModal')">关闭</button></div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+let token = localStorage.getItem('admin_token');
+let admin = null;
+let teachers = [];
+let classes = [];
+let classrooms = [];
+let classConstants = null;
+let c_name_manual = false;
+
+// 年级编码：K 幼儿园、P 小学、J 初中、H 高中
+const GRADE_OPTIONS = [
+  ['K0','幼儿园小班'], ['K1','幼儿园中班'], ['K2','幼儿园大班'],
+  ['P0','幼小衔接'], ['P1','一年级'], ['P2','二年级'], ['P3','三年级'], ['P4','四年级'], ['P5','五年级'],
+  ['J0','小初衔接'], ['J1','初一'], ['J2','初二'], ['J3','初三'],
+  ['H0','初高衔接'], ['H1','高一'], ['H2','高二'], ['H3','高三']
+];
+function gradeLabel(code) {
+  const item = GRADE_OPTIONS.find(g => g[0] === code);
+  return item ? item[1] : (code || '未设置');
+}
+function gradeOptionsHtml(blankText) {
+  return (blankText !== undefined ? '<option value="">' + blankText + '</option>' : '') +
+    GRADE_OPTIONS.map(g => '<option value="' + g[0] + '">' + g[0] + ' · ' + g[1] + '</option>').join('');
+}
+function subjectOptionsHtml(blankText) {
+  const list = (classConstants && classConstants.subjects) || ['语文','数学','英语','物理','化学','生物','历史','地理','政治'];
+  return (blankText !== undefined ? '<option value="">' + blankText + '</option>' : '') +
+    list.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+}
+function typeOptionsHtml(blankText) {
+  const list = (classConstants && classConstants.classTypes) || ['基础班','提高班','精品班','卓越班','一对一','一对二'];
+  return (blankText !== undefined ? '<option value="">' + blankText + '</option>' : '') +
+    list.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+}
+function syncClassNameFromSelects() {
+  if (c_name_manual) return;
+  const g = document.getElementById('c_grade').value;
+  const s = document.getElementById('c_subject').value;
+  const t = document.getElementById('c_type').value;
+  document.getElementById('c_name').value = [g, s, t].filter(Boolean).join('-');
+}
+
+window.onload = () => {
+  if (token && localStorage.getItem('adminInfo')) {
+    admin = JSON.parse(localStorage.getItem('adminInfo'));
+    showMain();
+  } else {
+    showLogin();
+  }
+  document.getElementById('myAvatarFile').addEventListener('change', onAvatarChange);
+};
+
+function showLogin() { document.getElementById('loginPage').style.display = 'flex'; document.getElementById('mainPage').style.display = 'none'; }
+function showMain() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainPage').style.display = 'flex';
+  document.getElementById('adminName').textContent = admin.nickname || admin.username;
+  renderAvatar(document.getElementById('sideAvatar'), admin);
+  (async () => {
+    try {
+      classConstants = await api('/constants/classes');
+      classrooms = (await api('/classroom/list')) || [];
+    } catch(e) { /* 忽略 */ }
+    // 新建班级下拉
+    document.getElementById('c_grade').innerHTML = gradeOptionsHtml('请选择年级');
+    document.getElementById('c_subject').innerHTML = subjectOptionsHtml('请选择学科');
+    document.getElementById('c_type').innerHTML = typeOptionsHtml('请选择班型');
+    document.getElementById('c_grade').onchange = syncClassNameFromSelects;
+    document.getElementById('c_subject').onchange = syncClassNameFromSelects;
+    document.getElementById('c_type').onchange = syncClassNameFromSelects;
+    const crSel = document.getElementById('c_classroom');
+    if (crSel) crSel.innerHTML = '<option value="">不指定</option>' + classrooms.map(c => '<option value="' + c.id + '">' + (c.size==='LARGE'?'🟡':'🔵') + c.name + '</option>').join('');
+    const stuGrade = document.getElementById('stu_grade');
+    if (stuGrade) stuGrade.innerHTML = gradeOptionsHtml('请选择年级');
+  })();
+  loadAttendance();
+  updateReqBadge();
+  // 每分钟刷新一次教师申请待办数字
+  if (window.__reqBadgeTimer) clearInterval(window.__reqBadgeTimer);
+  window.__reqBadgeTimer = setInterval(updateReqBadge, 60000);
+}
+
+function renderAvatar(el, user) {
+  if (user && user.avatar) el.innerHTML = '<img src="' + user.avatar + '">';
+  else el.textContent = (user && (user.nickname || user.name || user.username) || '管').slice(0, 1);
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = Object.assign({'Content-Type': 'application/json'}, options.headers || {});
+  if (token) options.headers['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(API + path, options);
+  const d = await r.json();
+  if (d.code === 401) { logout(); throw new Error(d.msg); }
+  if (d.code !== 200) throw new Error(d.msg || '请求失败');
+  return d.data;
+}
+
+async function doLogin() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  if (!u || !p) return toast('请输入账号密码');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登录中...';
+  try {
+    const r = await fetch(API + '/auth/login', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({username:u, password:p})});
+    const d = await r.json();
+    if (d.code !== 200) { toast(d.msg); return; }
+    if (d.data.user.role !== 'ADMIN') { toast('这是教师账号，请到教师端登录'); return; }
+    token = d.data.token; admin = d.data.user;
+    localStorage.setItem('admin_token', token);
+    localStorage.setItem('adminInfo', JSON.stringify(admin));
+    showMain();
+  } catch(e) { toast('网络错误'); }
+  finally { btn.disabled = false; btn.textContent = '登 录'; }
+}
+
+function logout() {
+  localStorage.removeItem('admin_token');
+  localStorage.removeItem('adminInfo');
+  token = null; admin = null;
+  location.reload();
+}
+
+const loaded = {};
+function switchTab(name) {
+  if (window.__classroomTimer) {
+    clearInterval(window.__classroomTimer);
+    window.__classroomTimer = null;
+  }
+  ['attendance','teachers','classes','classrooms','students','salary','pwd','account'].forEach(t => {
+    document.getElementById('tab-' + t).style.display = (t === name ? 'block' : 'none');
+  });
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.toggle('active', n.getAttribute('data-tab') === name));
+  if (name === 'attendance') loadAttendance();
+  if (name === 'teachers') loadTeachers();
+  if (name === 'classes') { loadClassesTab(); updateReqBadge(); }
+  if (name === 'classrooms') {
+    loadClassroomsTab();
+    window.__classroomTimer = setInterval(loadClassroomsTab, 60000);
+  }
+  if (name === 'students') loadStudentsTab();
+  if (name === 'salary') { loadSalaryConfig(); loadTeacherRates(); }
+  if (name === 'pwd') loadPwdRequests();
+  if (name === 'account') loadAccount();
+}
+
+// 教师端入口（新窗口打开，与管理端互不影响）
+function openTeacherPortal() { window.open('/teacher/', '_blank'); }
+
+// ---------- 打卡审核 ----------
+async function loadAttendance() {
+  const tbody = document.getElementById('attendanceTable');
+  try {
+    const d = await api('/attendance/list?current=1&size=500');
+    const list = d.records || [];
+    document.getElementById('attendanceEmpty').style.display = list.length ? 'none' : 'block';
+    tbody.innerHTML = list.map(a => {
+      const st = a.auditStatus === 1 ? '<span class="tag tag-ok">已通过</span>'
+        : a.auditStatus === 2 ? '<span class="tag tag-rej">已驳回</span>'
+        : '<span class="tag tag-wait">待审核</span>';
+      const present = (a.presentNames || '').split('、').filter(Boolean).map(n => '<span class="stu-tag">' + n + '</span>').join('');
+      const leaves = (a.leaves || []).map(l => '<span class="leave-tag">' + l.name + (l.reason ? '：' + l.reason : '') + '</span>').join('');
+      const ops = (a.auditStatus === 0
+        ? '<button class="btn-sm btn-green" onclick="audit(' + a.id + ',\'APPROVE\')">通过</button><button class="btn-sm btn-red" onclick="audit(' + a.id + ',\'REJECT\')">驳回</button>'
+        : '<span style="color:#bbb;font-size:12px;">已处理</span>') +
+        '<button class="btn-sm btn-gray" onclick="delAttendance(' + a.id + ',\'' + (a.lessonLabel || '') + '\')">删除</button>';
+      return '<tr>' +
+        '<td>' + (a.teacherName || '') + '</td>' +
+        '<td>' + (a.className || '') + '</td>' +
+        '<td>' + (a.lessonLabel || '') + '</td>' +
+        '<td>' + (a.actualStartTime || '').slice(0, 16) + '</td>' +
+        '<td>' + (a.durationMinutes / 60) + ' 小时</td>' +
+        '<td>' + a.studentCount + '</td>' +
+        '<td>' + a.leaveCount + '</td>' +
+        '<td>' + (present || '-') + (leaves ? '<div style="margin-top:4px;">' + leaves + '</div>' : '') + '</td>' +
+        '<td>' + st + (a.auditRemark ? '<div style="font-size:11px;color:#999;">' + a.auditRemark + '</div>' : '') + '</td>' +
+        '<td class="ops">' + ops + '</td></tr>';
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="10" class="empty">' + e.message + '</td></tr>'; }
+}
+
+async function audit(id, action) {
+  const remark = action === 'REJECT' ? (prompt('驳回原因（可不填）') || '') : '';
+  try {
+    await api('/attendance/audit/' + id, {method:'POST', body: JSON.stringify({action: action, remark: remark})});
+    toast(action === 'APPROVE' ? '已通过' : '已驳回');
+    loadAttendance();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 教师 ----------
+async function loadTeachers() {
+  const tbody = document.getElementById('teacherTable');
+  try {
+    teachers = await api('/teacher/list');
+    document.getElementById('teacherEmpty').style.display = teachers.length ? 'none' : 'block';
+    tbody.innerHTML = teachers.map(t =>
+      '<tr>' +
+      '<td>' + t.employeeNo + '</td>' +
+      '<td>' + t.name + '<div style="font-size:11px;color:#999;">账号：' + (t.account || t.name) + '</div></td>' +
+      '<td>' + (t.phone || '-') + '</td>' +
+      '<td>' + (t.email || '-') + '</td>' +
+      '<td>' + t.level + '</td>' +
+      '<td>' + (t.classCount || 0) + '</td>' +
+      '<td>' + (t.status === 1 ? '<span class="tag tag-ok">正常</span>' : '<span class="tag tag-rej">停用</span>') + '</td>' +
+      '<td class="ops"><button class="btn-sm btn-green" onclick="openAllSched(' + t.id + ')">本月课表</button>' +
+          '<button class="btn-sm btn-gray" onclick="editTeacher(' + t.id + ')">编辑</button>' +
+          '<button class="btn-sm btn-gray" onclick="resetPwd(' + t.id + ')">重置密码</button>' +
+          '<button class="btn-sm btn-red" onclick="deleteTeacher(' + t.id + ')">删除</button></td>' +
+      '</tr>'
+    ).join('');
+    fillTeacherSelect();
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="empty">' + e.message + '</td></tr>'; }
+}
+
+async function registerTeacher() {
+  const name = document.getElementById('t_name').value.trim();
+  const phone = document.getElementById('t_phone').value.trim();
+  const email = document.getElementById('t_email').value.trim();
+  const level = document.getElementById('t_level').value;
+  if (!name) return toast('请填写姓名');
+  try {
+    const d = await api('/teacher/register', {method:'POST', body: JSON.stringify({name, phone, email, level})});
+    alert('注册成功！\n工号：' + d.teacher.employeeNo + '\n登录账号：' + d.teacher.account + '\n初始密码：' + d.teacher.initialPassword);
+    document.getElementById('t_name').value = '';
+    document.getElementById('t_phone').value = '';
+    document.getElementById('t_email').value = '';
+    loadTeachers();
+  } catch(e) { toast(e.message); }
+}
+
+function editTeacher(id) {
+  const t = teachers.find(x => x.id === id);
+  if (!t) return;
+  document.getElementById('e_id').value = t.id;
+  document.getElementById('e_name').value = t.name;
+  document.getElementById('e_phone').value = t.phone || '';
+  document.getElementById('e_email').value = t.email || '';
+  document.getElementById('e_level').value = t.level;
+  document.getElementById('e_status').value = String(t.status);
+  document.getElementById('teacherModal').classList.add('show');
+}
+
+async function saveTeacher() {
+  const id = parseInt(document.getElementById('e_id').value);
+  try {
+    await api('/teacher/update', {method:'POST', body: JSON.stringify({
+      id: id,
+      name: document.getElementById('e_name').value.trim(),
+      phone: document.getElementById('e_phone').value.trim(),
+      email: document.getElementById('e_email').value.trim(),
+      level: document.getElementById('e_level').value,
+      status: parseInt(document.getElementById('e_status').value)
+    })});
+    closeModal('teacherModal');
+    toast('已保存');
+    loadTeachers();
+  } catch(e) { toast(e.message); }
+}
+
+async function resetPwd(id) {
+  if (!confirm('确定重置该教师密码为「姓名拼音小写+123456」？')) return;
+  try {
+    const d = await api('/teacher/reset-password', {method:'POST', body: JSON.stringify({id})});
+    alert('新密码：' + d.password);
+  } catch(e) { toast(e.message); }
+}
+
+async function deleteTeacher(id) {
+  const t = teachers.find(x => x.id === id);
+  if (!t) return;
+  const input = prompt('删除教师会同时删除其名下班级、学生名单与打卡记录，且不可恢复。\n请输入教师姓名「' + t.name + '」确认：');
+  if (input === null) return;
+  if (input.trim() !== t.name) return toast('姓名不一致，已取消删除');
+  try {
+    await api('/teacher/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除');
+    loadTeachers();
+  } catch(e) { toast(e.message); }
+}
+
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+// ---------- 套课课表 ----------
+let schedClassId = null;
+let schedClass = null;
+let editingSchedId = null;
+
+function todayStr() {
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+function hideSchedForms() {
+  document.getElementById('schedForm').style.display = 'none';
+  document.getElementById('batchForm').style.display = 'none';
+  editingSchedId = null;
+}
+
+function showSchedForm(item) {
+  document.getElementById('batchForm').style.display = 'none';
+  document.getElementById('schedForm').style.display = 'block';
+  editingSchedId = item ? item.id : null;
+  document.getElementById('sc_date').value = item ? item.date : todayStr();
+  document.getElementById('sc_time').value = item ? item.time : '18:30';
+  document.getElementById('sc_duration').value = String(item ? item.durationMinutes : (schedClass && schedClass.durationMinutes) || 120);
+  document.getElementById('sc_students').value = item ? (item.students || []).join(',') : '';
+}
+
+function showBatchForm() {
+  hideSchedForms();
+  document.getElementById('batchForm').style.display = 'block';
+  document.getElementById('bt_start').value = todayStr();
+  document.getElementById('bt_weeks').value = 12;
+  document.getElementById('bt_start_no').value = '';
+  dayTimeMap = {};
+  weekPlan = [];
+  const crSel = document.getElementById('bt_classroom');
+  if (crSel && crSel.options.length <= 1) {
+    crSel.innerHTML = '<option value="">不指定</option>' + classrooms.map(c => '<option value="' + c.id + '">' + (c.size==='LARGE'?'🟡':'🔵') + c.name + '</option>').join('');
+  }
+  rebuildWeekPlan();
+}
+
+// 逐周精细排课：weekPlan[周序号] = 该周勾选的上课日数组（0=周日 … 6=周六）
+let weekPlan = [];
+// 各星期单独上课时间：{ '1': '08:00', '2': '17:00' }
+let dayTimeMap = {};
+const WD_LABEL = ['日', '一', '二', '三', '四', '五', '六'];
+
+function rebuildWeekPlan() {
+  const start = document.getElementById('bt_start').value;
+  const weeks = Math.min(26, Math.max(1, parseInt(document.getElementById('bt_weeks').value) || 1));
+  const old = weekPlan;
+  weekPlan = [];
+  for (let w = 0; w < weeks; w++) weekPlan.push(old[w] ? old[w].slice() : []);
+  const box = document.getElementById('btPlanGrid');
+  if (!start) { box.innerHTML = '<div class="hint">请先选择开始日期</div>'; return; }
+  const base = new Date(start + 'T00:00:00');
+  const mondayOffset = (base.getDay() + 6) % 7;
+  const weekStart = new Date(base.getTime() - mondayOffset * 86400000);
+  box.innerHTML = weekPlan.map((days, w) => {
+    const monday = new Date(weekStart.getTime() + w * 7 * 86400000);
+    const sunday = new Date(monday.getTime() + 6 * 86400000);
+    const label = (monday.getMonth() + 1) + '/' + monday.getDate() + ' - ' + (sunday.getMonth() + 1) + '/' + sunday.getDate();
+    const btns = [1, 2, 3, 4, 5, 6, 0].map(d =>
+      '<button type="button" data-w="' + w + '" data-d="' + d + '" onclick="toggleWeekDay(' + w + ',' + d + ')"' +
+      ' style="padding:4px 9px;font-size:12px;border-radius:6px;border:1px solid ' + (days.includes(d) ? '#4a6cf7' : '#e0e0e0') + ';background:' + (days.includes(d) ? '#4a6cf7' : '#fff') + ';color:' + (days.includes(d) ? '#fff' : '#666') + ';cursor:pointer;">周' + WD_LABEL[d] + '</button>'
+    ).join(' ');
+    return '<div style="display:flex;align-items:center;gap:10px;font-size:12px;color:#8a8f99;">' +
+      '<span style="width:100px;flex-shrink:0;">第' + (w + 1) + '周 ' + label + '</span>' +
+      '<span style="display:flex;gap:4px;flex-wrap:wrap;">' + btns + '</span></div>';
+  }).join('');
+  renderDayTimes();
+  updateBatchHint();
+}
+
+/** 周排序：周一在前，周日最后 */
+function sortWeekdays(days) {
+  return days.slice().sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+}
+
+/** 已勾选的上课日（跨周去重），按周一到周日排序 */
+function checkedWeekdays() {
+  const set = new Set();
+  weekPlan.forEach(days => (days || []).forEach(d => set.add(d)));
+  return sortWeekdays(Array.from(set));
+}
+
+/** 渲染每个星期的单独上课时间，默认继承上方统一时间 */
+function renderDayTimes() {
+  const box = document.getElementById('btDayTimes');
+  if (!box) return;
+  const days = checkedWeekdays();
+  if (!days.length) { box.innerHTML = ''; return; }
+  const def = document.getElementById('bt_time').value || '18:30';
+  box.innerHTML = '<div class="hint" style="margin-bottom:6px;">各星期上课时间（可不同，如周一 08:00、周二 17:00）</div>' +
+    days.map(d => {
+      const val = dayTimeMap[d] || dayTimeMap[String(d)] || def;
+      return '<div style="display:inline-flex;align-items:center;gap:6px;margin:0 14px 6px 0;font-size:13px;color:#555;">' +
+        '周' + WD_LABEL[d] +
+        '<input type="time" value="' + val + '" onchange="dayTimeMap[' + d + ']=this.value;updateBatchHint()" ' +
+        'style="height:32px;border:1px solid #e0e0e0;border-radius:6px;padding:0 8px;">' +
+        '</div>';
+    }).join('');
+}
+
+/** 全局默认时间变化时，同步未单独修改过的星期 */
+function syncDayTimeDefaults() {
+  const days = checkedWeekdays();
+  days.forEach(d => { delete dayTimeMap[d]; delete dayTimeMap[String(d)]; });
+  renderDayTimes();
+  updateBatchHint();
+}
+
+function batchTotalLessons() {
+  return weekPlan.reduce((n, d) => n + (d ? d.length : 0), 0);
+}
+
+function updateBatchHint() {
+  const hint = document.getElementById('btHint');
+  if (!hint) return;
+  const total = batchTotalLessons();
+  const code = (schedClass && schedClass.code) || 'D';
+  const startRaw = document.getElementById('bt_start_no').value;
+  const start = parseInt(startRaw);
+  if (!total) { hint.textContent = '请至少勾选一周的上课日'; return; }
+  if (start > 0) {
+    hint.textContent = '共 ' + total + ' 节，从第 ' + start + ' 节开始（' + code + start + ' ~ ' + code + (start + total - 1) + '），如与已有课次冲突会提示调整';
+  } else {
+    hint.textContent = '共 ' + total + ' 节，课次号将自动顺延到该班级的下一节；如需从指定第几节开始，请填写上方「起始课次」';
+  }
+}
+
+function toggleWeekDay(w, d) {
+  const days = weekPlan[w] || (weekPlan[w] = []);
+  const i = days.indexOf(d);
+  if (i >= 0) days.splice(i, 1); else days.push(d);
+  rebuildWeekPlan();
+}
+
+async function openSchedule(classId) {
+  schedClassId = classId;
+  schedClass = classes.find(c => c.id === classId) || null;
+  hideSchedForms();
+  document.getElementById('schedTitle').textContent = '套课课表 · ' + (schedClass ? schedClass.name : '');
+  document.getElementById('scheduleModal').classList.add('show');
+  await loadScheduleList();
+}
+
+async function loadScheduleList() {
+  const tbody = document.getElementById('scheduleTable');
+  try {
+    const list = await api('/schedule/list?classId=' + schedClassId);
+    schedCache = list;
+    document.getElementById('scheduleEmpty').style.display = list.length ? 'none' : 'block';
+    document.getElementById('schedInfo').textContent = schedClass
+      ? schedClass.name + ' · ' + (schedClass.teacherName || '') + ' · 共 ' + list.length + ' 节（待上 ' + list.filter(x => x.status === 0).length + ' 节）'
+      : '';
+    tbody.innerHTML = list.map(s => {
+      const st = s.status === 1 ? '<span class="seat seat-ok">已打卡</span>' : '<span class="seat seat-wait">待打卡</span>';
+      const names = (s.students || []).length ? (s.students || []).join('、') : '<span style="color:#bbb;">沿用班级名单</span>';
+      const ops = (s.status === 0 ? '<button class="btn-sm btn-gray" onclick="editSched(' + s.id + ')">编辑</button>' : '') +
+        '<button class="btn-sm btn-gray" onclick="renumberSched(' + s.id + ')">改课次</button>' +
+        '<button class="btn-sm btn-gray" onclick="markIssue(' + s.id + ')">' + (s.issueFlag ? '改说明' : '标注问题') + '</button>' +
+        (s.status === 1 ? '' : '<button class="btn-sm btn-red" onclick="delSchedItem(' + s.id + ',\'' + s.lessonLabel + '\')">删除</button>');
+      const issue = s.issueFlag
+        ? '<span class="tag tag-rej">有问题</span>' + (s.issueNote ? '<div style="font-size:11px;color:#a34f0b;max-width:180px;white-space:normal;">' + s.issueNote + '</div>' : '')
+        : '<span style="color:#bbb;">—</span>';
+      return '<tr><td>' + s.lessonLabel + (s.source === 'TEACHER' ? ' <span class="tag" style="background:#eef2ff;color:#4a6cf7;">教师申请</span>' : '') + '</td>' +
+        '<td>' + s.date + ' ' + s.time + '</td><td>' + (s.durationMinutes / 60) + ' 小时</td>' +
+        '<td>' + names + '</td><td>' + st + '</td><td>' + issue + '</td><td class="ops">' + ops + '</td></tr>';
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="7" class="empty">' + e.message + '</td></tr>'; }
+}
+
+let schedCache = [];
+/** 修改某课次课次号，同班所有课次按日期顺序以其为锚点自动重排 */
+async function renumberSched(id) {
+  const item = schedCache.find(x => x.id === id);
+  if (!item) return toast('课次不存在，请刷新后重试');
+  const input = prompt(
+    '将 ' + item.date + ' ' + item.time + ' 这节课设为第几次课？\n' +
+    '同班其他课次会按日期顺序自动重排：之前的课依次 -1，之后的课依次 +1。',
+    item.lessonNo
+  );
+  if (input === null) return;
+  const no = parseInt(input, 10);
+  if (!no || no < 1 || no > 999) return toast('课次需为 1-999 的数字');
+  if (no === item.lessonNo) return;
+  try {
+    const r = await api('/schedule/renumber', {method: 'POST', body: JSON.stringify({id, lessonNo: no})});
+    toast('已重排 ' + r.count + ' 节课（第 ' + r.firstNo + ' - ' + r.lastNo + ' 节）');
+    loadScheduleList();
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function editSched(id) {
+  if (!schedCache.length) schedCache = await api('/schedule/list?classId=' + schedClassId);
+  const item = schedCache.find(x => x.id === id);
+  if (!item) return toast('课次不存在，请刷新后重试');
+  showSchedForm(item);
+}
+
+async function saveSchedItem() {
+  const body = {
+    classId: schedClassId,
+    date: document.getElementById('sc_date').value,
+    time: document.getElementById('sc_time').value,
+    durationMinutes: parseInt(document.getElementById('sc_duration').value),
+    students: document.getElementById('sc_students').value,
+    remark: ''
+  };
+  if (editingSchedId) body.id = editingSchedId;
+  if (!body.date) return toast('请选择上课日期');
+  if (!body.time) return toast('请填写上课时间');
+  try {
+    const d = await api('/schedule/save', {method:'POST', body: JSON.stringify(body)});
+    toast(editingSchedId ? '课次已更新' : '已添加课次 ' + (d.lessonLabel || ''));
+    hideSchedForms();
+    schedCache = [];
+    await loadScheduleList();
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function batchGenerate() {
+  const dayTimes = {};
+  checkedWeekdays().forEach(d => { if (dayTimeMap[d]) dayTimes[d] = dayTimeMap[d]; });
+  const body = {
+    classId: schedClassId,
+    startDate: document.getElementById('bt_start').value,
+    time: document.getElementById('bt_time').value,
+    dayTimes: dayTimes,
+    startLessonNo: parseInt(document.getElementById('bt_start_no').value) || null,
+    durationMinutes: parseInt(document.getElementById('bt_duration').value),
+    classroomId: parseInt(document.getElementById('bt_classroom').value) || null,
+    weekPlan: weekPlan
+  };
+  if (!body.startDate) return toast('请选择开始日期');
+  if (!body.time && !Object.keys(dayTimes).length) return toast('请填写上课时间');
+  const total = weekPlan.reduce((n, d) => n + (d ? d.length : 0), 0);
+  if (!total) return toast('请至少勾选一周的上课日');
+  if (!confirm('将生成 ' + total + ' 节课，确认？')) return;
+  try {
+    const d = await api('/schedule/batch', {method:'POST', body: JSON.stringify(body)});
+    toast('已生成 ' + d.count + ' 节课：' + d.first + ' … ' + d.last);
+    hideSchedForms();
+    schedCache = [];
+    await loadScheduleList();
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+// 管理端标注课次问题
+async function markIssue(id) {
+  const item = schedCache.find(x => x.id === id);
+  const input = prompt('填写该课次的问题说明（留空则清除标记）：', item ? (item.issueNote || '') : '');
+  if (input === null) return;
+  try {
+    await api('/schedule/issue', {method:'POST', body: JSON.stringify({scheduleId: id, note: input.trim()})});
+    toast(input.trim() ? '已标注问题' : '已清除问题标记');
+    schedCache = [];
+    await loadScheduleList();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 全部教师课次 / 教师月度计划 ----------
+function currentMonthValue() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+}
+function setAllMonth(month) {
+  document.getElementById('allMonth').value = month || '';
+  loadAllSched();
+}
+function shiftAllMonth(offset) {
+  const current = document.getElementById('allMonth').value || currentMonthValue();
+  const parts = current.split('-').map(Number);
+  const d = new Date(parts[0], parts[1] - 1 + offset, 1);
+  setAllMonth(d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'));
+}
+function monthText(month) {
+  return month.slice(0, 4) + '年' + Number(month.slice(5, 7)) + '月';
+}
+function weekdayText(dateStr) {
+  const p = dateStr.split('-').map(Number);
+  return '周' + '日一二三四五六'.charAt(new Date(p[0], p[1] - 1, p[2]).getDay());
+}
+
+async function openAllSched(teacherId) {
+  document.getElementById('allSchedModal').classList.add('show');
+  if (!teachers.length) {
+    try { teachers = await api('/teacher/list'); } catch(e) { /* 忽略 */ }
+  }
+  const sel = document.getElementById('allTeacher');
+  sel.innerHTML = '<option value="">全部教师</option>' + teachers.map(t => '<option value="' + t.id + '">' + escHtml(t.name) + '</option>').join('');
+  sel.value = teacherId ? String(teacherId) : '';
+  document.getElementById('allMonth').value = teacherId ? currentMonthValue() : '';
+  if (teacherId) {
+    document.getElementById('allStatus').value = '';
+    document.getElementById('allIssue').checked = false;
+  }
+  await loadAllSched();
+}
+
+function renderTeacherMonth(list, teacherName, month) {
+  const box = document.getElementById('allSchedBody');
+  const valid = list.filter(s => s.status !== 2);
+  const done = valid.filter(s => s.status === 1).length;
+  const pending = valid.filter(s => s.status === 0).length;
+  const hours = Math.round(valid.reduce((sum, s) => sum + Number(s.durationMinutes || 0), 0) / 6) / 10;
+  document.getElementById('allSchedSummary').innerHTML = '<div class="month-summary">' +
+    '<span class="month-stat">本月课程<b>' + valid.length + ' 节</b></span>' +
+    '<span class="month-stat">待打卡<b>' + pending + ' 节</b></span>' +
+    '<span class="month-stat">已打卡<b>' + done + ' 节</b></span>' +
+    '<span class="month-stat">总时长<b>' + hours + ' 小时</b></span></div>';
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">' + escHtml(teacherName) + ' 在 ' + monthText(month) + ' 暂无排课</div>';
+    return;
+  }
+  const groups = {};
+  list.forEach(s => {
+    if (!groups[s.date]) groups[s.date] = [];
+    groups[s.date].push(s);
+  });
+  box.innerHTML = Object.keys(groups).sort().map(date => {
+    const rows = groups[date];
+    const lessons = rows.map(s => {
+      const st = s.status === 1 ? '<span class="tag tag-ok">已打卡</span>'
+        : s.status === 2 ? '<span class="tag tag-rej">已取消</span>' : '<span class="tag tag-wait">待打卡</span>';
+      const duration = Math.round(Number(s.durationMinutes || 0) / 6) / 10;
+      return '<div class="month-lesson">' +
+        '<div><div class="month-time">' + escHtml(s.time) + '–' + escHtml(s.endTime || '') + '</div>' +
+        '<div class="month-meta">' + duration + ' 小时</div></div>' +
+        '<div><div class="month-class">' + escHtml(s.className || '未命名班级') + ' · ' + escHtml(s.lessonLabel || '') + '</div>' +
+        '<div class="month-meta">教室：' + escHtml(s.classroomName || '未指定') + '</div></div>' +
+        '<div>' + st + '</div></div>';
+    }).join('');
+    return '<div class="month-day"><div class="month-day-head">' + escHtml(date) + ' · ' + weekdayText(date) +
+      '<span style="float:right;">' + rows.length + ' 节</span></div>' + lessons + '</div>';
+  }).join('');
+}
+
+async function loadAllSched() {
+  const box = document.getElementById('allSchedBody');
+  const teacherId = document.getElementById('allTeacher').value;
+  const month = document.getElementById('allMonth').value;
+  const monthly = !!(teacherId && month);
+  const selectedTeacher = teachers.find(t => String(t.id) === String(teacherId));
+  const teacherName = selectedTeacher ? selectedTeacher.name : '该教师';
+  const status = document.getElementById('allStatus').value;
+  const issue = document.getElementById('allIssue').checked;
+  document.getElementById('allStatus').disabled = monthly;
+  document.getElementById('allIssue').disabled = monthly;
+  document.getElementById('allSchedTitle').textContent = teacherId
+    ? teacherName + ' · ' + (month ? monthText(month) + '课表' : '全部课次')
+    : '全部教师课次' + (month ? ' · ' + monthText(month) : '');
+  document.getElementById('allSchedSummary').innerHTML = '';
+  const qs = [];
+  if (teacherId) qs.push('teacherId=' + encodeURIComponent(teacherId));
+  if (month) qs.push('month=' + encodeURIComponent(month));
+  if (!monthly && status !== '') qs.push('status=' + status);
+  if (!monthly && issue) qs.push('issue=1');
+  box.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const list = await api('/schedule/list' + (qs.length ? '?' + qs.join('&') : ''));
+    if (monthly) { renderTeacherMonth(list, teacherName, month); return; }
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无课次</div>'; return; }
+    // 整合展示：教师 → 班级 → 课次（同一老师的课放在一起，同班课次再聚在一起）
+    const tGroups = [];
+    const tIdx = {};
+    list.forEach(s => {
+      const tn = s.teacherName || '未分配教师';
+      if (tIdx[tn] === undefined) {
+        tIdx[tn] = tGroups.length;
+        tGroups.push({ name: tn, count: 0, classes: [], cIdx: {} });
+      }
+      const g = tGroups[tIdx[tn]];
+      const cn = s.className || '未命名班级';
+      if (g.cIdx[cn] === undefined) {
+        g.cIdx[cn] = g.classes.length;
+        g.classes.push({ name: cn, rows: [] });
+      }
+      g.classes[g.cIdx[cn]].rows.push(s);
+      g.count++;
+    });
+    let html = '';
+    tGroups.forEach(g => {
+      html += '<tr><td colspan="7" style="background:#eef2ff;color:#3b5bdb;font-weight:600;">' +
+        escHtml(g.name) + ' · ' + g.count + ' 节 / ' + g.classes.length + ' 个班级</td></tr>';
+      g.classes.forEach(c => {
+        html += '<tr><td colspan="7" style="background:#f8f9ff;color:#5c6b8a;font-weight:600;font-size:12px;">' +
+          '　└ ' + escHtml(c.name) + ' · ' + c.rows.length + ' 节</td></tr>';
+        c.rows.forEach(s => {
+          const st = s.status === 1 ? '<span class="seat seat-ok">已打卡</span>' : '<span class="seat seat-wait">待打卡</span>';
+          const issueCell = s.issueFlag
+            ? '<span class="tag tag-rej">有问题</span><div style="font-size:11px;color:#a34f0b;max-width:220px;white-space:normal;">' + escHtml(s.issueNote) + '</div>'
+            : '<span style="color:#bbb;">—</span>';
+          html += '<tr><td>' + escHtml(s.lessonLabel) + '</td><td>' + escHtml(s.className) + '</td><td>' + escHtml(s.date) + ' ' + escHtml(s.time) + '</td>' +
+            '<td>' + (s.durationMinutes / 60) + ' 小时</td><td>' + st + '</td><td>' + issueCell + '</td>' +
+            '<td class="ops"><button class="btn-sm btn-gray" onclick="markIssueAll(' + s.id + ')">' + (s.issueFlag ? '改说明' : '标注问题') + '</button></td></tr>';
+        });
+      });
+    });
+    box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>课次</th><th>班级</th><th>上课时间</th><th>时长</th><th>状态</th><th>问题说明</th><th>操作</th></tr></thead><tbody>' + html + '</tbody></table></div>';
+  } catch(e) { box.innerHTML = '<div class="empty">' + escHtml(e.message) + '</div>'; }
+}
+
+async function markIssueAll(id) {
+  const input = prompt('填写该课次的问题说明（留空则清除标记）：');
+  if (input === null) return;
+  try {
+    await api('/schedule/issue', {method:'POST', body: JSON.stringify({scheduleId: id, note: input.trim()})});
+    toast(input.trim() ? '已标注问题' : '已清除问题标记');
+    loadAllSched();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 教师申请（排课 + 学生变更） ----------
+async function updateReqBadge() {
+  try {
+    const d = await api('/request/pending/count');
+    const total = Number(d.total || 0);
+    const nav = document.getElementById('navBadge');
+    nav.textContent = total ? String(total) : '';
+    nav.classList.toggle('show', total > 0);
+    const btn = document.getElementById('reqBadge');
+    btn.textContent = total ? String(total) : '';
+    btn.classList.toggle('show', total > 0);
+    btn.title = '排课申请 ' + d.schedule + ' 条 · 学生变更 ' + d.student + ' 条';
+  } catch(e) { /* 忽略 */ }
+}
+
+async function openReqAudit() {
+  document.getElementById('reqAuditModal').classList.add('show');
+  await Promise.all([loadReqAudit(), loadStudentAudit()]);
+}
+
+async function loadReqAudit() {
+  const box = document.getElementById('reqAuditBody');
+  box.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const list = await api('/schedule/request/list');
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无排课申请</div>'; return; }
+    box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>教师</th><th>班级</th><th>申请时间</th><th>说明</th><th>状态</th><th>操作</th></tr></thead><tbody>' +
+      list.map(r => {
+        const st = r.status === 1 ? '<span class="tag tag-ok">已通过</span>'
+          : r.status === 2 ? '<span class="tag tag-rej">已驳回</span>'
+          : '<span class="tag tag-wait">待审核</span>';
+        const ops = r.status === 0
+          ? '<button class="btn-sm btn-green" onclick="auditReq(' + r.id + ',\'APPROVE\')">通过</button>' +
+            '<button class="btn-sm btn-red" onclick="auditReq(' + r.id + ',\'REJECT\')">驳回</button>'
+          : '<span style="color:#bbb;font-size:12px;">' + (r.auditRemark || '已处理') + '</span>';
+        return '<tr><td>' + (r.teacherName || '') + '</td><td>' + (r.className || '') +
+          (r.isNewClass ? '<div style="font-size:11px;color:#2b8fd6;font-weight:600;">新建班级 · ' + (r.classCode || '') + '</div>' : '') + '</td>' +
+          '<td>' + r.date + ' ' + r.time + '<div style="font-size:11px;color:#999;">' + (r.durationMinutes / 60) + ' 小时</div>' +
+          (r.lessonCount > 1 ? '<div style="font-size:11px;color:#4a6cf7;font-weight:600;">套课 ' + r.lessonCount + ' 节' +
+            (r.startLessonNo ? ' · 从第 ' + r.startLessonNo + ' 节开始' : '') + '</div>' : '') + '</td>' +
+          '<td>' + (r.remark || '—') + '</td><td>' + st + '</td><td class="ops">' + ops + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  } catch(e) { box.innerHTML = '<div class="empty">' + e.message + '</div>'; }
+}
+
+async function auditReq(id, action) {
+  let remark = '';
+  if (action === 'REJECT') {
+    const input = prompt('驳回原因（会显示给教师）：', '时间冲突，请调整');
+    if (input === null) return;
+    remark = input.trim();
+  }
+  try {
+    const d = await api('/schedule/request/audit', {method:'POST', body: JSON.stringify({id, action, auditRemark: remark})});
+    toast(action === 'APPROVE' ? '已通过，课次已生成' + (d && d.count > 1 ? '（套课 ' + d.count + ' 节）' : '') : '已驳回');
+    await loadReqAudit();
+    updateReqBadge();
+    if (action === 'APPROVE') {
+      schedCache = [];
+      if (schedClassId) loadScheduleList();
+      loadClassesTab();
+    }
+  } catch(e) { toast(e.message); }
+}
+
+async function loadStudentAudit() {
+  const box = document.getElementById('studentAuditBody');
+  box.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const list = await api('/student/request/list');
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无学生变更申请</div>'; return; }
+    box.innerHTML = '<div style="overflow-x:auto;"><table><thead><tr><th>教师</th><th>班级</th><th>新增</th><th>移除</th><th>说明</th><th>状态</th><th>操作</th></tr></thead><tbody>' +
+      list.map(r => {
+        const st = r.status === 1 ? '<span class="tag tag-ok">已通过</span>'
+          : r.status === 2 ? '<span class="tag tag-rej">已驳回</span>'
+          : '<span class="tag tag-wait">待审核</span>';
+        const ops = r.status === 0
+          ? '<button class="btn-sm btn-green" onclick="auditStudentReq(' + r.id + ',\'APPROVE\')">通过</button>' +
+            '<button class="btn-sm btn-red" onclick="auditStudentReq(' + r.id + ',\'REJECT\')">驳回</button>'
+          : '<span style="color:#bbb;font-size:12px;">' + (r.auditRemark || '已处理') + '</span>';
+        return '<tr><td>' + (r.teacherName || '') + '</td><td>' + (r.className || '') + '</td>' +
+          '<td style="color:#1c9c52;">' + (r.addNames.length ? r.addNames.join('、') : '—') + '</td>' +
+          '<td style="color:#d63c68;">' + (r.removeNames.length ? r.removeNames.join('、') : '—') + '</td>' +
+          '<td>' + (r.reason || '—') + '</td><td>' + st + '</td><td class="ops">' + ops + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+  } catch(e) { box.innerHTML = '<div class="empty">' + e.message + '</div>'; }
+}
+
+async function auditStudentReq(id, action) {
+  let remark = '';
+  if (action === 'REJECT') {
+    const input = prompt('驳回原因（会显示给教师）：', '名单与实际不符，请核对');
+    if (input === null) return;
+    remark = input.trim();
+  }
+  try {
+    const d = await api('/student/request/audit', {method:'POST', body: JSON.stringify({id, action, auditRemark: remark})});
+    if (action === 'APPROVE') {
+      let msg = '已通过，当前班级 ' + d.count + ' 人';
+      if (d.added && d.added.length) msg += '，新增 ' + d.added.join('、');
+      if (d.removed && d.removed.length) msg += '，移除 ' + d.removed.join('、');
+      toast(msg);
+    } else {
+      toast('已驳回');
+    }
+    await loadStudentAudit();
+    updateReqBadge();
+    if (action === 'APPROVE') loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function delSchedItem(id, label) {
+  if (!confirm('删除课次 ' + label + '？已打卡的课次删除后不影响已有工资记录。')) return;
+  try {
+    await api('/schedule/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除 ' + label);
+    schedCache = [];
+    await loadScheduleList();
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 打卡记录删除 ----------
+async function delAttendance(id, label) {
+  if (!confirm('删除课次 ' + label + ' 的打卡记录？删除后该条工资会一并移除，对应课次恢复为待打卡。')) return;
+  try {
+    await api('/attendance/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除打卡记录');
+    loadAttendance();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 管理员删除 ----------
+async function delAdmin(id, username) {
+  if (!confirm('删除管理员账号「' + username + '」？只删除该账号，不影响另一个管理员及其数据。')) return;
+  try {
+    await api('/admin/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除管理员 ' + username);
+    loadAdmins();
+  } catch(e) { toast(e.message); }
+}
+
+
+async function loadClassesTab() {
+  if (!teachers.length) await loadTeachers();
+  fillTeacherSelect();
+  const tbody = document.getElementById('classTable');
+  try {
+    classes = await api('/class/list');
+    document.getElementById('classEmpty').style.display = classes.length ? 'none' : 'block';
+    // 同一老师的班级整合在一起，便于对照同一教师的排课
+    const groups = [];
+    const idx = {};
+    classes.forEach(c => {
+      const k = c.teacherName || '未分配教师';
+      if (idx[k] === undefined) { idx[k] = groups.length; groups.push({ name: k, rows: [] }); }
+      groups[idx[k]].rows.push(c);
+    });
+    tbody.innerHTML = groups.map(g =>
+      '<tr><td colspan="8" style="background:#eef2ff;color:#3b5bdb;font-weight:600;">' +
+        g.name + ' · ' + g.rows.length + ' 个班级</td></tr>' +
+      g.rows.map(c => {
+        // 班级名已是「年级代码-学科-班型」格式，直接显示，副行只留班次代码
+        const classDetail = (c.classroomName ? '🏫' + c.classroomName : '') +
+          (c.durationMinutes ? ' · ' + c.durationMinutes + '分钟' : '');
+        return '<tr><td>' +
+          '<div style="font-weight:700;color:#1a2a6c;font-size:14px;">' + escHtml(c.name) + '</div>' +
+          (c.code ? '<div style="font-size:11px;color:#999;margin-top:2px;">' + escHtml(c.code) + '</div>' : '') +
+          '</td><td style="font-size:12px;color:#666;">' + classDetail + '</td>' +
+          '<td>' + (c.teacherName || '') + '</td><td>' + c.studentCount + '</td>' +
+          '<td>' + c.doneLessons + '</td><td>' + c.plannedLessons + (c.pendingLessons ? '（待上 ' + c.pendingLessons + '）' : '') + '</td>' +
+          '<td>' + c.nextLessonLabel + '</td>' +
+          '<td class="ops"><button class="btn-sm btn-blue" onclick="openSchedule(' + c.id + ')">课表</button>' +
+          '<button class="btn-sm btn-gray" onclick="editStudents(' + c.id + ')">学生名单</button>' +
+          '<button class="btn-sm btn-gray" onclick="renameClass(' + c.id + ')">重命名</button>' +
+          '<button class="btn-sm btn-red" onclick="delClass(' + c.id + ')">删除</button></td></tr>';
+      }).join('')
+    ).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="8" class="empty">' + e.message + '</td></tr>'; }
+}
+
+function fillTeacherSelect() {
+  const sel = document.getElementById('c_teacher');
+  sel.innerHTML = teachers.filter(t => t.status === 1).map(t => '<option value="' + t.id + '">' + t.name + '（' + t.employeeNo + '）</option>').join('');
+}
+
+async function createClass() {
+  const body = {
+    name: document.getElementById('c_name').value.trim(),
+    code: document.getElementById('c_code').value.trim(),
+    teacherId: parseInt(document.getElementById('c_teacher').value),
+    durationMinutes: parseInt(document.getElementById('c_duration').value),
+    gradeCode: document.getElementById('c_grade').value,
+    subject: document.getElementById('c_subject').value,
+    classType: document.getElementById('c_type').value,
+    classroomId: parseInt(document.getElementById('c_classroom').value) || null,
+    students: document.getElementById('c_students').value
+  };
+  if (!body.gradeCode) return toast('请选择年级');
+  if (!body.name) return toast('请填写班级名称');
+  if (!body.code) return toast('请填写班次代码');
+  if (!body.teacherId) return toast('请选择教师');
+  try {
+    const d = await api('/class/create', {method:'POST', body: JSON.stringify(body)});
+    toast('已创建：' + d.name + '（' + d.studentCount + ' 名学生）');
+    document.getElementById('c_name').value = '';
+    document.getElementById('c_code').value = '';
+    document.getElementById('c_students').value = '';
+    c_name_manual = false;
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+function renameClass(id) {
+  const c = classes.find(x => x.id === id);
+  if (!c) return;
+  document.getElementById('rc_id').value = id;
+  document.getElementById('rc_current').textContent =
+    '当前：' + c.name + ' | 代码 ' + c.code + ' | ' + (gradeLabel(c.gradeCode) || '') + ' · ' + (c.subject || '') + ' · ' + (c.classType || '');
+  // 填充下拉选项
+  document.getElementById('rc_grade').innerHTML = gradeOptionsHtml('请选择年级');
+  document.getElementById('rc_subject').innerHTML = subjectOptionsHtml('请选择学科');
+  document.getElementById('rc_type').innerHTML = typeOptionsHtml('请选择班型');
+  document.getElementById('rc_grade').value = c.gradeCode || '';
+  document.getElementById('rc_subject').value = c.subject || '';
+  document.getElementById('rc_type').value = c.classType || '';
+  document.getElementById('rc_code').value = c.code || '';
+  openModal('renameClassModal');
+}
+async function submitRenameClass() {
+  const id = parseInt(document.getElementById('rc_id').value);
+  const g = document.getElementById('rc_grade').value;
+  const s = document.getElementById('rc_subject').value;
+  const t = document.getElementById('rc_type').value;
+  const code = document.getElementById('rc_code').value.trim();
+  if (!g) return toast('请选择年级');
+  if (!s) return toast('请选择学科');
+  if (!t) return toast('请选择班型');
+  if (!code) return toast('请填写班次代码');
+  try {
+    await api('/class/rename', {method:'POST', body: JSON.stringify({id, gradeCode:g, subject:s, classType:t, code})});
+    toast('班级已重命名：' + g + '-' + s + '-' + t);
+    closeModal('renameClassModal');
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function delClass(id) {
+  const c = classes.find(x => x.id === id);
+  const name = c ? c.name : '该班级';
+  const input = prompt('删除班级会同时删除其课表、学生名单与打卡记录（已审核的工资记录保留），且不可恢复。\n请输入班级名称「' + name + '」确认：');
+  if (input === null) return;
+  if (input.trim() !== name) return toast('名称不一致，已取消删除');
+  try {
+    await api('/class/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除');
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+let editingClassId = null;
+
+async function editStudents(id) {
+  try {
+    const d = await api('/class/detail?id=' + id);
+    editingClassId = id;
+    document.getElementById('studentsInfo').textContent =
+      d.name + ' · ' + (d.teacherName || '') + ' · 已上 ' + d.doneLessons + ' 节 · 下一课次 ' + d.nextLessonLabel;
+    document.getElementById('studentsText').value = (d.students || []).join('\n');
+    document.getElementById('studentsModal').classList.add('show');
+  } catch(e) { toast(e.message); }
+}
+
+async function saveClassStudents() {
+  if (!editingClassId) return;
+  const names = document.getElementById('studentsText').value
+    .split(/[\n,，、;；]+/).map(s => s.trim()).filter(Boolean);
+  if (!names.length) return toast('至少保留 1 名学生');
+  try {
+    const d = await api('/class/students/save', {method:'POST', body: JSON.stringify({classId: editingClassId, students: names})});
+    let msg = '名单已保存：共 ' + d.count + ' 人';
+    if (d.added.length) msg += '，新增 ' + d.added.join('、');
+    if (d.removed.length) msg += '，移除 ' + d.removed.join('、');
+    toast(msg);
+    closeModal('studentsModal');
+    editingClassId = null;
+    loadClassesTab();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 教室管理 ----------
+async function loadClassroomsTab() {
+  try {
+    classrooms = await api('/classroom/list');
+  } catch(e) { classrooms = []; }
+  const tbody = document.getElementById('classroomTable');
+  document.getElementById('classroomEmpty').style.display = classrooms.length ? 'none' : 'block';
+  tbody.innerHTML = classrooms.map(c => {
+    const current = c.currentLesson;
+    const usageHtml = current
+      ? '<span class="tag tag-rej">上课中</span><div style="font-size:11px;color:#556;margin-top:5px;">' +
+        escHtml(current.className) + ' · ' + escHtml(current.teacherName) + '<br>至 ' + escHtml(current.endTime) + ' 结束</div>'
+      : '<span class="tag tag-ok">空闲</span><div style="font-size:11px;color:#889;margin-top:5px;">当前时段无课</div>';
+    const today = c.todayLessons || [];
+    const planHtml = today.length
+      ? today.map(l =>
+          '<div style="padding:5px 0;border-bottom:1px dashed #e2e5ef;">' +
+          '<span style="font-weight:600;color:#3b5bdb;">' + escHtml(l.time) + '–' + escHtml(l.endTime) + '</span>' +
+          '<span style="margin-left:6px;font-weight:600;">' + escHtml(l.lessonLabel) + '</span>' +
+          '<div style="font-size:11px;color:#667;margin-top:2px;">' + escHtml(l.className) + ' · ' + escHtml(l.teacherName) + '</div></div>'
+        ).join('')
+      : '<span style="color:#999;">今日无排课</span>';
+    return '<tr><td style="white-space:nowrap;font-weight:600;">' + escHtml(c.name) + '</td>' +
+      '<td>' + (c.size === 'LARGE' ? '🟡 大教室' : '🔵 小教室') + '</td>' +
+      '<td style="min-width:130px;">' + usageHtml + '</td><td style="min-width:250px;">' + planHtml + '</td>' +
+      '<td class="ops"><button class="btn-sm btn-red" onclick="delClassroom(' + c.id + ',\'' + escHtml(c.name) + '\')">停用</button></td></tr>';
+  }).join('');
+}
+async function saveClassroom() {
+  const name = document.getElementById('cr_name').value.trim();
+  const size = document.getElementById('cr_size').value;
+  if (!name) return toast('请填写教室名称');
+  try {
+    await api('/classroom/save', {method:'POST', body: JSON.stringify({name, size})});
+    document.getElementById('cr_name').value = '';
+    toast('教室已保存');
+    await loadClassroomsTab();
+    // 同时重建其它页面上的教室下拉
+    const crSel = document.getElementById('bt_classroom');
+    if (crSel) crSel.innerHTML = '<option value="">不指定</option>' + classrooms.map(c => '<option value="' + c.id + '">' + (c.size==='LARGE'?'🟡':'🔵') + c.name + '</option>').join('');
+    const cSel = document.getElementById('c_classroom');
+    if (cSel) cSel.innerHTML = '<option value="">不指定</option>' + classrooms.map(c => '<option value="' + c.id + '">' + (c.size==='LARGE'?'🟡':'🔵') + c.name + '</option>').join('');
+  } catch(e) { toast(e.message); }
+}
+async function delClassroom(id, name) {
+  if (!confirm('确认停用「' + name + '」？历史排课不受影响，新排课将看不到该教室。')) return;
+  try {
+    await api('/classroom/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已停用');
+    await loadClassroomsTab();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 学生档案 ----------
+let studentListCache = [];
+let studentDetailCache = null;
+function escHtml(s) {
+  return String(s === null || s === undefined ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+async function ensureTeachers() {
+  if (!teachers.length) { try { teachers = await api('/teacher/list'); } catch(e) { /* 忽略 */ } }
+}
+async function ensureClasses() {
+  if (!classes.length) { try { classes = await api('/class/list'); } catch(e) { /* 忽略 */ } }
+}
+
+async function loadStudentsTab() {
+  const tbody = document.getElementById('studentTable');
+  const kw = (document.getElementById('stuKeyword').value || '').trim();
+  tbody.innerHTML = '<tr><td colspan="5" class="empty">加载中...</td></tr>';
+  try {
+    const d = await api('/student/list' + (kw ? '?keyword=' + encodeURIComponent(kw) : ''));
+    studentListCache = d.list || [];
+    document.getElementById('studentEmpty').style.display = studentListCache.length ? 'none' : 'block';
+    document.getElementById('stuCountHint').textContent = '共 ' + studentListCache.length + ' 名学生';
+    tbody.innerHTML = studentListCache.map(s => {
+      const courses = (s.courses || []).length
+        ? s.courses.map(c => '<span class="stu-tag">' + escHtml(c.courseName) + (c.teacherName ? ' · ' + escHtml(c.teacherName) : '') +
+            ' · 已上 ' + c.usedLessons + '/' + c.totalLessons + ' · 剩 ' + c.remainingLessons + '</span>').join('')
+        : '<span style="color:#bbb;">未添加套课</span>';
+      const ops = '<button class="btn-sm btn-blue" onclick="openCourseModal(' + s.id + ')">+ 套课</button>' +
+        '<button class="btn-sm btn-gray" onclick="openStudentDetail(' + s.id + ')">记录</button>' +
+        '<button class="btn-sm btn-gray" onclick="copyStudentLink(' + s.id + ')">分享链接</button>' +
+        '<button class="btn-sm btn-gray" onclick="editStudent(' + s.id + ')">编辑</button>' +
+        '<button class="btn-sm btn-red" onclick="delStudent(' + s.id + ')">删除</button>';
+      return '<tr><td><b>' + escHtml(s.name) + '</b></td><td>' + escHtml(s.gradeName || '—') + '</td>' +
+        '<td>' + escHtml(s.phone || '—') + '</td><td style="max-width:420px;">' + courses + '</td>' +
+        '<td class="ops">' + ops + '</td></tr>';
+    }).join('');
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty">' + escHtml(e.message) + '</td></tr>';
+  }
+}
+
+function resetStudentForm() {
+  document.getElementById('stu_id').value = '';
+  document.getElementById('stu_name').value = '';
+  document.getElementById('stu_grade').value = '';
+  document.getElementById('stu_phone').value = '';
+  document.getElementById('stu_remark').value = '';
+}
+
+function editStudent(id) {
+  const s = studentListCache.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  document.getElementById('stu_id').value = s.id;
+  document.getElementById('stu_name').value = s.name || '';
+  document.getElementById('stu_grade').value = s.gradeCode || '';
+  document.getElementById('stu_phone').value = s.phone || '';
+  document.getElementById('stu_remark').value = s.remark || '';
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+async function saveStudent() {
+  const body = {
+    id: parseInt(document.getElementById('stu_id').value) || null,
+    name: document.getElementById('stu_name').value.trim(),
+    gradeCode: document.getElementById('stu_grade').value,
+    phone: document.getElementById('stu_phone').value.trim(),
+    remark: document.getElementById('stu_remark').value.trim()
+  };
+  if (!body.name) return toast('请填写学生姓名');
+  try {
+    await api('/student/save', {method:'POST', body: JSON.stringify(body)});
+    toast(body.id ? '学生信息已更新' : '学生已录入');
+    resetStudentForm();
+    loadStudentsTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function delStudent(id) {
+  const s = studentListCache.find(x => Number(x.id) === Number(id));
+  if (!confirm('确定删除学生「' + (s ? s.name : '') + '」？其套课记录会一并删除，历史打卡与工资不受影响。')) return;
+  try {
+    await api('/student/delete', {method:'POST', body: JSON.stringify({id})});
+    toast('已删除');
+    loadStudentsTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function openCourseModal(studentId) {
+  await ensureClasses();
+  await ensureTeachers();
+  const s = studentListCache.find(x => Number(x.id) === Number(studentId));
+  if (!s) return;
+  document.getElementById('courseStudentInfo').textContent = '学生：' + s.name + '（' + (s.gradeName || '未设置年级') + '）';
+  const classSel = document.getElementById('courseClass');
+  classSel.innerHTML = '<option value="">不关联班级（仅手工记录）</option>' +
+    classes.map(c => '<option value="' + c.id + '">' + escHtml(c.name) + '（' + escHtml(c.code) + '）</option>').join('');
+  const tSel = document.getElementById('courseTeacher');
+  tSel.innerHTML = '<option value="">不指定教师</option>' +
+    teachers.map(t => '<option value="' + t.id + '">' + escHtml(t.name) + '</option>').join('');
+  document.getElementById('courseName').value = '';
+  document.getElementById('courseTotal').value = '';
+  document.getElementById('courseModal').setAttribute('data-student-id', studentId);
+  document.getElementById('courseModal').classList.add('show');
+}
+
+function onCourseClassChange() {
+  const classId = parseInt(document.getElementById('courseClass').value);
+  if (!classId) return;
+  const c = classes.find(x => Number(x.id) === classId);
+  if (!c) return;
+  const nameEl = document.getElementById('courseName');
+  if (!nameEl.value.trim()) nameEl.value = c.name;
+  if (c.teacherId) document.getElementById('courseTeacher').value = String(c.teacherId);
+}
+
+async function saveStudentCourse() {
+  const modal = document.getElementById('courseModal');
+  const studentId = parseInt(modal.getAttribute('data-student-id'));
+  const body = {
+    studentId: studentId,
+    classId: parseInt(document.getElementById('courseClass').value) || null,
+    courseName: document.getElementById('courseName').value.trim(),
+    teacherId: parseInt(document.getElementById('courseTeacher').value) || null,
+    totalLessons: parseInt(document.getElementById('courseTotal').value)
+  };
+  if (!body.classId && !body.courseName) return toast('请选择班级或填写课程名称');
+  if (!(body.totalLessons >= 0)) return toast('请填写总课时');
+  try {
+    await api('/student/course/save', {method:'POST', body: JSON.stringify(body)});
+    toast('套课已添加');
+    closeModal('courseModal');
+    loadStudentsTab();
+  } catch(e) { toast(e.message); }
+}
+
+async function openStudentDetail(id) {
+  try {
+    const d = await api('/student/detail?id=' + id);
+    studentDetailCache = d;
+    document.getElementById('studentDetailTitle').textContent = d.student.name + ' · 上课记录';
+    const coursesHtml = d.courses.length ? d.courses.map(c =>
+      '<div style="border:1px solid #eef0f4;border-radius:8px;padding:10px;margin-bottom:8px;">' +
+      '<div style="font-size:14px;color:#333;font-weight:600;">' + escHtml(c.courseName) + '</div>' +
+      '<div style="font-size:12px;color:#888;margin-top:4px;">老师：' + escHtml(c.teacherName || '未指定') +
+      ' · 总课时：' + c.totalLessons + ' · 已上：' + c.usedLessons + ' · 剩余：<b style="color:#4a6cf7;">' + c.remainingLessons + '</b>' +
+      (c.remainingLessons <= 0 ? ' <span class="tag tag-rej">课时已用完</span>' : '') + '</div>' +
+      '</div>').join('') : '<div class="empty">未添加套课</div>';
+    const recordsHtml = d.records.length ? '<table><thead><tr><th>日期</th><th>时间</th><th>课程</th><th>老师</th><th>状态</th></tr></thead><tbody>' +
+      d.records.map(r => '<tr><td>' + escHtml(r.date) + '</td><td>' + escHtml(r.time) + '</td><td>' + escHtml(r.courseName) +
+        '</td><td>' + escHtml(r.teacherName) + '</td><td>' + (r.present ? '<span class="tag tag-ok">已上课</span>' : '<span class="tag tag-wait">请假</span>') + '</td></tr>').join('') +
+      '</tbody></table>' : '<div class="empty">暂无上课记录（教师打卡后自动同步）</div>';
+    document.getElementById('studentDetailBox').innerHTML = coursesHtml + '<h3 style="font-size:14px;margin:14px 0 10px;">最近上课记录</h3>' + recordsHtml;
+    document.getElementById('studentDetailModal').classList.add('show');
+  } catch(e) { toast(e.message); }
+}
+
+function copyStudentLink(id) {
+  const s = studentListCache.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  if (!s.shareToken) return toast('该学生暂无分享码，请刷新后重试');
+  const url = location.origin + '/student/?token=' + s.shareToken;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(url).then(() => toast('分享链接已复制：' + url)).catch(() => prompt('复制下面的分享链接：', url));
+  } else {
+    prompt('复制下面的分享链接：', url);
+  }
+}
+
+// ---------- 工资 ----------
+async function loadSalaryConfig() {
+  try {
+    const c = await api('/salary/config');
+    document.getElementById('baseRate').value = c.baseRate;
+    document.getElementById('midRate').value = c.midRate;
+    document.getElementById('extraPerPerson').value = c.extraPerPerson;
+    const m = document.getElementById('salaryMonth');
+    if (!m.value) {
+      const t = new Date(Date.now() + 8 * 3600 * 1000);
+      m.value = t.toISOString().slice(0, 7);
+    }
+    fillDayOptions('');
+    loadSalary();
+  } catch(e) { toast(e.message); }
+}
+
+async function saveSalaryConfig() {
+  try {
+    await api('/salary/config', {method:'POST', body: JSON.stringify({
+      baseRate: parseFloat(document.getElementById('baseRate').value),
+      midRate: parseFloat(document.getElementById('midRate').value),
+      extraPerPerson: parseFloat(document.getElementById('extraPerPerson').value)
+    })});
+    toast('规则已保存');
+    loadSalary();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 教师分年级课时费 ----------
+let trData = null;
+let trShowAll = false;
+async function loadTeacherRates() {
+  try {
+    trData = await api('/salary/teacher-rates');
+    const sel = document.getElementById('trTeacher');
+    const keep = sel.value;
+    sel.innerHTML = trData.teachers.map(t => '<option value="' + t.id + '">' + t.name + '</option>').join('');
+    if (keep && trData.teachers.some(t => String(t.id) === keep)) sel.value = keep;
+    renderTeacherRates();
+  } catch(e) { toast(e.message); }
+}
+
+function trOverrideCount(teacher) {
+  const rates = teacher.rates || {};
+  return Object.keys(rates).filter(code => {
+    const r = rates[code] || {};
+    return r.baseRate !== null && r.baseRate !== undefined || r.midRate !== null && r.midRate !== undefined;
+  }).length;
+}
+
+function trVisibleGrades(teacher) {
+  const taught = teacher.gradeCodes || [];
+  const codes = GRADE_OPTIONS
+    .map(g => g[0])
+    .filter(code => trShowAll || taught.indexOf(code) >= 0 || (teacher.rates || {})[code] !== undefined);
+  // 没有带课年级也没有单独设置时，回退展示全部，避免空白
+  return codes.length ? codes : GRADE_OPTIONS.map(g => g[0]);
+}
+
+function markTrSet(inp) {
+  const tr = inp.closest('tr');
+  const baseEl = tr.querySelector('.tr-base');
+  const midEl = tr.querySelector('.tr-mid');
+  const has = (baseEl && baseEl.value !== '') || (midEl && midEl.value !== '');
+  inp.classList.toggle('set', inp.value !== '');
+  const flag = tr.querySelector('.tr-flag');
+  if (flag) {
+    flag.textContent = has ? '单独' : '默认';
+    flag.classList.toggle('on', has);
+  }
+}
+
+function toggleAllGrades() {
+  trShowAll = !trShowAll;
+  renderTeacherRates();
+}
+
+function renderTeacherRates() {
+  if (!trData) return;
+  const teacherId = document.getElementById('trTeacher').value;
+  const teacher = trData.teachers.find(t => String(t.id) === String(teacherId));
+  const body = document.getElementById('trBody');
+  if (!teacher) { body.innerHTML = ''; return; }
+  const g = trData.global;
+  const taught = teacher.gradeCodes || [];
+  const codes = trVisibleGrades(teacher);
+  body.innerHTML = codes.map(code => {
+    const r = teacher.rates[code] || {};
+    const base = r.baseRate === null || r.baseRate === undefined ? '' : r.baseRate;
+    const mid = r.midRate === null || r.midRate === undefined ? '' : r.midRate;
+    const hasSet = base !== '' || mid !== '';
+    return '<tr>' +
+      '<td class="tr-grade">' + code + '<span>' + gradeLabel(code) + (taught.indexOf(code) >= 0 ? '' : ' · 未带课') + '</span></td>' +
+      '<td><input class="tr-base' + (base !== '' ? ' set' : '') + '" data-grade="' + code + '" type="number" step="0.01" min="0" value="' + base + '" placeholder="' + g.baseRate + '" oninput="markTrSet(this)"></td>' +
+      '<td><input class="tr-mid' + (mid !== '' ? ' set' : '') + '" data-grade="' + code + '" type="number" step="0.01" min="0" value="' + mid + '" placeholder="' + g.midRate + '" oninput="markTrSet(this)"></td>' +
+      '<td><span class="tr-flag' + (hasSet ? ' on' : '') + '">' + (hasSet ? '单独' : '默认') + '</span></td>' +
+      '</tr>';
+  }).join('');
+  document.getElementById('trScopeBtn').textContent = trShowAll ? '只看带课年级' : '显示全部年级';
+  document.getElementById('trSummary').textContent =
+    '共 ' + codes.length + ' 个年级 · 已单独设置 ' + trOverrideCount(teacher) +
+    ' 个 · 其余沿用全局 ' + g.baseRate + ' / ' + g.midRate;
+  document.getElementById('trEmpty').style.display = codes.length ? 'none' : 'block';
+}
+
+async function saveTeacherRates() {
+  const teacherId = document.getElementById('trTeacher').value;
+  if (!teacherId) return toast('请选择教师');
+  const rates = {};
+  document.querySelectorAll('#trBody .tr-base').forEach(inp => {
+    const code = inp.getAttribute('data-grade');
+    const midEl = document.querySelector('#trBody .tr-mid[data-grade="' + code + '"]');
+    rates[code] = {
+      baseRate: inp.value === '' ? null : parseFloat(inp.value),
+      midRate: midEl && midEl.value !== '' ? parseFloat(midEl.value) : null
+    };
+  });
+  try {
+    await api('/salary/teacher-rates', {method:'POST', body: JSON.stringify({teacherId: parseInt(teacherId), rates})});
+    toast('该教师的年级课时费已保存');
+    await loadTeacherRates();
+    loadSalary();
+  } catch(e) { toast(e.message); }
+}
+
+function daysInMonth(month) {
+  if (!month) return 31;
+  const p = month.split('-').map(Number);
+  return new Date(p[0], p[1], 0).getDate();
+}
+function fillDayOptions(keep) {
+  const month = document.getElementById('salaryMonth').value;
+  const sel = document.getElementById('salaryDate');
+  const prev = keep === undefined ? sel.value : String(keep);
+  const n = daysInMonth(month);
+  let html = '<option value="">整月（全部日期）</option>';
+  for (let i = 1; i <= n; i++) {
+    const dd = String(i).padStart(2, '0');
+    html += '<option value="' + dd + '">' + (month ? month + '-' + dd : i + ' 日') + '</option>';
+  }
+  sel.innerHTML = html;
+  if (prev && Number(prev) <= n) sel.value = prev;
+}
+
+function selectedDay() {
+  const month = document.getElementById('salaryMonth').value;
+  const dd = document.getElementById('salaryDate').value;
+  return month && dd ? month + '-' + dd : '';
+}
+
+function onSalaryMonthChange() {
+  fillDayOptions();
+  loadSalary();
+}
+
+async function loadSalary() {
+  const month = document.getElementById('salaryMonth').value;
+  const day = selectedDay();
+  if (!month) return;
+  const tbody = document.getElementById('salaryTable');
+  try {
+    const d = await api('/salary/report?month=' + month + (day ? '&date=' + day : ''));
+    document.getElementById('salaryScope').textContent = day ? '统计范围：' + day + '（单日）' : '统计范围：' + month + '（整月）';
+    document.getElementById('salaryEmpty').style.display = d.details.length ? 'none' : 'block';
+    const groups = [];
+    const idx = {};
+    d.details.forEach(r => {
+      if (idx[r.teacherName] === undefined) {
+        idx[r.teacherName] = groups.length;
+        groups.push({ name: r.teacherName, rows: [], amount: 0, hours: 0 });
+      }
+      const g = groups[idx[r.teacherName]];
+      g.rows.push(r);
+      g.amount += r.subtotal;
+      g.hours += r.hours;
+    });
+    let html = '';
+    groups.forEach(g => {
+      html += '<tr style="background:#eef2ff;"><td colspan="10" style="font-weight:600;color:#4a6cf7;">' +
+        g.name + ' · ' + g.rows.length + ' 次课 · ' + g.hours.toFixed(1) + ' 小时 · 小计 ' + g.amount.toFixed(2) + ' 元</td></tr>';
+      html += g.rows.map(r =>
+        '<tr><td></td><td>' + (r.className || '') + '</td><td>' + (r.lessonLabel || '') + '</td>' +
+        '<td>' + r.date + '</td><td>' + r.hours + ' 小时</td><td>' + r.studentCount + ' 人</td>' +
+        '<td style="font-size:11px;color:#888;">' + r.rule + '</td>' +
+        '<td>' + r.hoursFee.toFixed(2) + '</td><td>' + r.headFee.toFixed(2) + '</td>' +
+        '<td class="money">' + r.subtotal.toFixed(2) + '</td></tr>'
+      ).join('');
+    });
+    tbody.innerHTML = html || '<tr><td colspan="10" class="empty">所选范围暂无已通过审核的打卡</td></tr>';
+    document.getElementById('salarySummary').innerHTML = d.summary.map(s =>
+      '<tr><td>' + s.teacherName + '</td><td>' + s.lessons + '</td><td>' + s.hours + ' 小时</td><td class="money">' + s.amount.toFixed(2) + '</td></tr>'
+    ).join('') || '<tr><td colspan="4" class="empty">暂无数据</td></tr>';
+    document.getElementById('salaryTotal').textContent = d.totalAmount.toFixed(2) + ' 元';
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="10" class="empty">' + e.message + '</td></tr>'; }
+}
+
+async function exportSalary() {
+  const month = document.getElementById('salaryMonth').value;
+  const day = selectedDay();
+  if (!month) return toast('请选择月份');
+  try {
+    const r = await fetch(API + '/salary/export?month=' + month + (day ? '&date=' + day : ''), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const ct = r.headers.get('content-type') || '';
+    if (!ct.includes('spreadsheetml')) {
+      const d = await r.json().catch(() => ({ msg: '导出失败' }));
+      if (d.code === 401) logout();
+      throw new Error(d.msg || '导出失败');
+    }
+    const blob = await r.blob();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = '教师工资_' + (day || month) + '.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 3000);
+    toast('已导出');
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 改密审核 ----------
+async function loadPwdRequests() {
+  const tbody = document.getElementById('pwdTable');
+  try {
+    const list = await api('/password-request/list');
+    document.getElementById('pwdEmpty').style.display = list.length ? 'none' : 'block';
+    tbody.innerHTML = list.map(r => {
+      const st = r.status === 1 ? '<span class="tag tag-ok">已通过</span>'
+        : r.status === 2 ? '<span class="tag tag-rej">已拒绝</span>' : '<span class="tag tag-wait">待审核</span>';
+      const ops = r.status === 0
+        ? '<button class="btn-sm btn-green" onclick="reviewPwd(' + r.id + ',\'APPROVE\')">通过</button><button class="btn-sm btn-red" onclick="reviewPwd(' + r.id + ',\'REJECT\')">拒绝</button>'
+        : '-';
+      return '<tr><td>' + r.name + '</td><td>' + r.username + '</td><td>' + (r.created_at || '').slice(0,16) + '</td><td>' + st + '</td><td class="ops">' + ops + '</td></tr>';
+    }).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="empty">' + e.message + '</td></tr>'; }
+}
+
+async function reviewPwd(id, action) {
+  try {
+    await api('/password-request/review', {method:'POST', body: JSON.stringify({id, action})});
+    toast(action === 'APPROVE' ? '已通过，新密码生效' : '已拒绝');
+    loadPwdRequests();
+  } catch(e) { toast(e.message); }
+}
+
+// ---------- 账号 ----------
+async function loadAccount() {
+  document.getElementById('myNickname').value = admin.nickname || '';
+  document.getElementById('myUsername').value = admin.username || '';
+  document.getElementById('myName').value = admin.name || '';
+  document.getElementById('myPhone').value = admin.phone || '';
+  document.getElementById('myEmail').value = admin.email || '';
+  avatarData = admin.avatar || null;
+  renderAvatar(document.getElementById('myAvatarBox'), admin);
+  loadAdmins();
+  loadMailSettings();
+  loadMailLogs();
+}
+
+function onAvatarChange(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  if (f.size > 300 * 1024) return toast('头像图片请小于 300KB');
+  const reader = new FileReader();
+  reader.onload = () => {
+    avatarData = reader.result;
+    document.getElementById('myAvatarBox').innerHTML = '<img src="' + avatarData + '">';
+  };
+  reader.readAsDataURL(f);
+}
+
+async function saveMyProfile() {
+  try {
+    const d = await api('/auth/profile', {method:'POST', body: JSON.stringify({
+      nickname: document.getElementById('myNickname').value,
+      username: document.getElementById('myUsername').value,
+      name: document.getElementById('myName').value,
+      phone: document.getElementById('myPhone').value,
+      email: document.getElementById('myEmail').value,
+      avatar: avatarData || ''
+    })});
+    admin = Object.assign(admin, d);
+    localStorage.setItem('adminInfo', JSON.stringify(admin));
+    document.getElementById('adminName').textContent = admin.nickname || admin.username;
+    renderAvatar(document.getElementById('sideAvatar'), admin);
+    toast('资料已保存');
+  } catch(e) { toast(e.message); }
+}
+
+async function changeAdminPwd() {
+  try {
+    const d = await api('/auth/change-password', {method:'POST', body: JSON.stringify({
+      oldPassword: document.getElementById('admOldPwd').value,
+      newPassword: document.getElementById('admNewPwd').value
+    })});
+    toast(d.msg || '密码已修改');
+    document.getElementById('admOldPwd').value = '';
+    document.getElementById('admNewPwd').value = '';
+  } catch(e) { toast(e.message); }
+}
+
+async function loadAdmins() {
+  try {
+    const list = await api('/admin/list');
+    document.getElementById('adminTable').innerHTML = list.map(a =>
+      '<tr><td>' + a.username + '</td><td>' + (a.nickname || a.name) + '</td><td>' + (a.phone || '-') + '</td><td>' + (a.email || '-') + '</td>' +
+      '<td class="ops">' + (a.id === admin.id
+        ? '<span style="color:#4a6cf7;font-size:12px;">当前登录</span>'
+        : '<button class="btn-sm btn-red" onclick="delAdmin(' + a.id + ',\'' + a.username + '\')">删除</button>') + '</td></tr>'
+    ).join('');
+  } catch(e) { toast(e.message); }
+}
+
+async function createAdmin() {
+  try {
+    const d = await api('/admin/register', {method:'POST', body: JSON.stringify({
+      username: document.getElementById('newAdmUser').value.trim(),
+      password: document.getElementById('newAdmPwd').value,
+      nickname: document.getElementById('newAdmNick').value.trim(),
+      email: document.getElementById('newAdmEmail').value.trim()
+    })});
+    toast('管理员已创建：' + d.username);
+    document.getElementById('newAdmUser').value = '';
+    document.getElementById('newAdmPwd').value = '';
+    document.getElementById('newAdmNick').value = '';
+    document.getElementById('newAdmEmail').value = '';
+    loadAdmins();
+  } catch(e) { toast(e.message); }
+}
+
+async function loadMailSettings() {
+  try {
+    const s = await api('/mail/settings');
+    document.getElementById('mailApiKey').value = s.apiKey || '';
+    document.getElementById('mailFromEmail').value = s.fromEmail || '';
+    document.getElementById('mailFromName').value = s.fromName || '';
+  } catch(e) {}
+}
+
+async function saveMail() {
+  try {
+    await api('/mail/settings', {method:'POST', body: JSON.stringify({
+      apiKey: document.getElementById('mailApiKey').value.trim(),
+      fromEmail: document.getElementById('mailFromEmail').value.trim(),
+      fromName: document.getElementById('mailFromName').value.trim()
+    })});
+    toast('邮件设置已保存');
+  } catch(e) { toast(e.message); }
+}
+
+async function loadMailLogs() {
+  const tbody = document.getElementById('mailTable');
+  try {
+    const list = await api('/mail/list');
+    document.getElementById('mailEmpty').style.display = list.length ? 'none' : 'block';
+    tbody.innerHTML = list.map(m =>
+      '<tr><td>' + (m.teacher_name || '') + '</td><td>' + (m.to_email || '-') + '</td><td>' + (m.subject || '') + '</td>' +
+      '<td>' + (m.status || '') + (m.error ? '<div style="font-size:11px;color:#999;">' + m.error + '</div>' : '') + '</td>' +
+      '<td>' + (m.created_at || '').slice(0,16) + '</td></tr>'
+    ).join('');
+  } catch(e) { tbody.innerHTML = '<tr><td colspan="5" class="empty">' + e.message + '</td></tr>'; }
+}
+
+// 密码显示 / 隐藏（登录、修改密码等所有密码框）
+function enhancePasswordFields() {
+  document.querySelectorAll('input[type=password]').forEach(inp => {
+    if (inp.dataset.eye) return;
+    inp.dataset.eye = '1';
+    const wrap = document.createElement('span');
+    wrap.className = 'pwd-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pwd-eye';
+    btn.textContent = '👁';
+    btn.onclick = () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+    };
+    wrap.appendChild(btn);
+  });
+}
+document.addEventListener('DOMContentLoaded', enhancePasswordFields);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

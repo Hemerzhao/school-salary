@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>教师打卡</title>
+<style>
+/* teacher glassmorphism 2026 */
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: radial-gradient(900px 500px at 20% -20%, rgba(79,172,254,0.45), transparent 60%),
+                radial-gradient(800px 400px at 100% 0%, rgba(0,242,254,0.30), transparent 60%),
+                linear-gradient(160deg, #0f2a4f 0%, #0d5f8c 100%);
+    min-height: 100vh; padding: 20px; color: #112; }
+  .wrap { max-width: 480px; margin: 0 auto; }
+
+  /* === 玻璃拟态卡片通用 === */
+  .card, .login-card, .modal-box, .sched-item, .req-item, .cat-group {
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    background: rgba(255,255,255,0.22);
+    border: 1px solid rgba(255,255,255,0.38);
+    border-radius: 22px;
+    box-shadow: 0 10px 30px rgba(6,25,60,0.25);
+    color: #112;
+  }
+
+  .login-card { background: rgba(255,255,255,0.30); padding: 32px 24px; margin-top: 40px; }
+  .login-card h1 { text-align: center; color: #153; font-size: 22px; margin-bottom: 6px;
+                   text-shadow: 1px 1px 0 rgba(255,255,255,0.25); }
+  .login-card p { text-align: center; color: #346; font-size: 13px; margin-bottom: 28px; }
+  .logo { text-align: center; font-size: 48px; margin-bottom: 12px; }
+  .field { margin-bottom: 18px; }
+  .field label { display: block; color: #235; font-size: 13px; margin-bottom: 6px; }
+  .field input {
+    width: 100%; height: 48px; border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 12px; padding: 0 14px; font-size: 16px;
+    background: rgba(255,255,255,0.92);
+    outline: none; transition: border-color .2s; color: #112; font-family: inherit;
+  }
+  .field input:focus { border-color: #4facfe; }
+
+  .btn {
+    width: 100%; min-height: 48px; border: none; border-radius: 12px;
+    font-size: 16px; font-weight: 600; cursor: pointer; transition: transform .1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-primary {
+    background: linear-gradient(135deg, #4facfe, #00c6fb);
+    box-shadow: 0 6px 20px rgba(79,172,254,0.42);
+    color: #fff;
+  }
+  .btn-primary:disabled { background: #aab; box-shadow: none; cursor: not-allowed; }
+
+  .header { display: flex; justify-content: space-between; align-items: center; color: #fff; margin-bottom: 24px; }
+  .header .who { display: flex; align-items: center; gap: 10px; }
+  .header .avatar {
+    width: 38px; height: 38px; border-radius: 50%;
+    background: rgba(255,255,255,0.25);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.35);
+  }
+  .header .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .header h2 { font-size: 18px; font-weight: 600; text-shadow: 1px 1px 0 rgba(255,255,255,0.25); }
+  .header .sub { font-size: 11px; opacity: 0.85; font-weight: 400; }
+  .header button {
+    background: rgba(255,255,255,0.28); border: 1px solid rgba(255,255,255,0.45);
+    color: #134; padding: 8px 14px; border-radius: 20px; font-size: 14px; cursor: pointer;
+    backdrop-filter: blur(10px); min-height: 44px;
+  }
+
+  .card { padding: 24px; margin-bottom: 16px; }
+  .card h3 { font-size: 16px; color: #153; margin-bottom: 16px;
+              display: flex; align-items: center; gap: 8px;
+              text-shadow: 1px 1px 0 rgba(255,255,255,0.25); }
+  .card h3 .dot { width: 8px; height: 8px; background: #4facfe; border-radius: 50%; box-shadow: 0 0 6px rgba(79,172,254,0.6); }
+
+  .field-row { margin-bottom: 16px; }
+  .field-row label { display: block; color: #235; font-size: 13px; margin-bottom: 6px; }
+  .field-row input, .field-row textarea, .field-row select {
+    width: 100%; height: 48px;
+    background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 12px; padding: 0 14px; font-size: 16px;
+    outline: none; color: #112; font-family: inherit;
+  }
+  .field-row textarea { height: auto; min-height: 80px; padding: 10px 14px; }
+  .field-row input:focus, .field-row select:focus { border-color: #4facfe; }
+
+  .lesson-tip {
+    background: rgba(255,255,255,0.35); color: #134;
+    border-radius: 12px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px;
+    border: 1px solid rgba(255,255,255,0.45);
+  }
+
+  .stu-row {
+    display: flex; align-items: center; gap: 8px; padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.25); flex-wrap: wrap;
+  }
+  .stu-row:last-child { border-bottom: none; }
+  .stu-name { flex: 1; font-size: 14px; color: #112; min-width: 70px; font-weight: 500; }
+  .state-btn {
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.28);
+    border-radius: 18px; padding: 10px 16px; min-height: 44px;
+    font-size: 14px; cursor: pointer; color: #134;
+    backdrop-filter: blur(8px);
+  }
+  .state-btn.on-present { background: #11998e; border-color: #11998e; color: #fff; font-weight: 600; }
+  .state-btn.on-leave   { background: #eb3349; border-color: #eb3349; color: #fff; font-weight: 600; }
+  .leave-reason {
+    width: 100%; height: 44px; border: 1px solid rgba(255,255,255,0.45);
+    border-radius: 10px; padding: 0 10px; font-size: 16px;
+    outline: none; margin-top: 8px; display: none;
+    background: rgba(255,255,255,0.92);
+  }
+  .leave-reason.show { display: block; }
+
+  .timer { text-align: center; padding: 6px 0 14px; }
+  .timer .time {
+    font-size: 52px; font-weight: 300; color: #4facfe;
+    font-variant-numeric: tabular-nums; letter-spacing: -2px;
+    text-shadow: 0 2px 10px rgba(79,172,254,0.4);
+  }
+  .timer .label { color: #246; font-size: 13px; text-shadow: 1px 1px 0 rgba(255,255,255,0.25); }
+
+  /* Toast — 玻璃黑 */
+  .toast {
+    position: fixed; top: 30%; left: 50%; transform: translateX(-50%);
+    background: rgba(10,25,50,0.85);
+    backdrop-filter: blur(12px);
+    color: #fff; padding: 14px 26px; border-radius: 14px;
+    border: 1px solid rgba(255,255,255,0.2);
+    z-index: 999; font-size: 15px; display: none;
+    max-width: 80%; text-align: center;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+  .toast.show { display: block; animation: fadeIn .2s; }
+
+  /* Modal — 半透明黑 + 底上滑 */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(6,15,40,0.55);
+    backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 998; padding: 16px;
+  }
+  .modal.show { display: flex; }
+  .modal-box {
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 18px; padding: 24px;
+    width: 100%; max-width: 340px; max-height: 88vh; overflow-y: auto;
+    color: #112;
+  }
+  .modal-box h3 { margin-bottom: 16px; font-size: 17px; color: #153; }
+  .modal-box input, .modal-box select {
+    width: 100%; padding: 12px 14px; min-height: 48px;
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 12px;
+    margin-bottom: 10px; font-size: 16px;
+    box-sizing: border-box; background: #fff; color: #112; font-family: inherit;
+  }
+  .modal-box textarea {
+    width: 100%; min-height: 80px; padding: 12px 14px;
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 12px;
+    font-size: 16px; box-sizing: border-box; background: #fff;
+    color: #112; font-family: inherit; resize: vertical;
+  }
+  .modal-box label { display: block; font-size: 13px; color: #345; margin-bottom: 4px; }
+  .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
+  .modal-actions button {
+    flex: 1; min-height: 48px; padding: 12px; border-radius: 12px;
+    border: 1px solid rgba(0,0,0,0.1);
+    background: rgba(255,255,255,0.8); cursor: pointer; font-size: 15px; color: #112;
+  }
+  .modal-actions .btn-ok {
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(79,172,254,0.4);
+  }
+  .modal-actions .btn-danger {
+    background: linear-gradient(135deg,#eb3349,#f45c43);
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(235,51,73,0.35);
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translate(-50%, -10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+  .status-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 500; }
+  .status-wait { background: rgba(255,243,205,0.9); color: #856404; }
+  .status-ok   { background: rgba(212,237,218,0.9); color: #155724; }
+  .status-rej  { background: rgba(248,215,218,0.9); color: #721c24; }
+
+  .history-item { padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.2); }
+  .history-item:last-child { border-bottom: none; }
+  .history-item .title { font-size: 14px; color: #112; font-weight: 500; }
+  .history-item .sub { font-size: 12px; color: #345; margin-top: 3px; }
+  .empty { text-align: center; color: rgba(255,255,255,0.7); padding: 30px; font-size: 13px; }
+
+  /* 课表 */
+  .sched-tabs { display:flex; gap:8px; margin-bottom:12px; }
+  .sched-tab {
+    flex:1; min-height: 44px; padding: 10px 0; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.22);
+    color: #134; font-size: 14px; cursor: pointer;
+    backdrop-filter: blur(8px);
+  }
+  .sched-tab.on {
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    border-color: transparent; color: #fff; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(79,172,254,0.4);
+  }
+  .sched-item {
+    display:flex; justify-content:space-between; align-items:center;
+    gap:10px; padding:12px; margin-bottom:10px;
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 16px;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(14px);
+  }
+  .sched-item .l1 { font-size:14px; color:#112; font-weight:600; }
+  .sched-item .l2 { font-size:12px; color:#346; margin-top:3px; }
+  .sched-item .btn-go {
+    border:none; border-radius: 12px; min-height: 44px;
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    color:#fff; padding: 10px 20px; font-size: 14px; cursor: pointer;
+    white-space: nowrap; font-weight: 600;
+    box-shadow: 0 3px 10px rgba(79,172,254,0.4);
+  }
+  .sched-item .done-tag { font-size:12px; color:#11998e; white-space:nowrap; font-weight: 600; }
+  #timeRow input[type=datetime-local] {
+    flex:1; min-height: 48px; padding:10px 14px;
+    border: 1px solid rgba(255,255,255,0.6); border-radius: 12px;
+    font-size: 16px; background: rgba(255,255,255,0.92); color:#112;
+  }
+
+  .sched-item { flex-wrap:wrap; padding:10px 12px; }
+  .sched-item .l1 { font-size:13px; }
+  .sched-item .l2 { font-size:12px; }
+  .sched-item .btn-go { padding: 10px 20px; font-size: 14px; }
+  .sched-item.done { background: rgba(200,240,216,0.45); border-color: rgba(67,233,123,0.4); }
+  .sched-item.flash { animation: flash 1.4s ease-out; }
+  @keyframes flash { 0% { box-shadow:0 0 0 3px rgba(67,233,123,.55); } 100% { box-shadow:0 0 0 0 rgba(67,233,123,0); } }
+  .sched-main { flex:1; min-width:0; }
+  .sched-actions { display:flex; gap:8px; align-items:center; flex-shrink:0; }
+  .mini-link { border:none; background:none; color:#246; font-size:13px; cursor:pointer; padding:8px 6px; text-decoration:underline; min-height: 36px; }
+  .mini-link.warn { color:#e8590c; }
+  .badge-ok   { background:rgba(212,237,218,0.9); color:#155724; }
+  .badge-wait { background:rgba(255,243,205,0.9); color:#856404; }
+  .badge-rej  { background:rgba(248,215,218,0.9); color:#721c24; }
+  .badge-issue{ background:rgba(255,232,204,0.9); color:#c2410c; }
+  .issue-note {
+    width:100%; margin-top:8px; background:rgba(255,246,238,0.92);
+    border-left:3px solid #fd7e14; color:#a34f0b;
+    font-size:12px; padding:8px 12px; border-radius: 8px; word-break:break-all;
+  }
+
+  /* 课程分类分组 */
+  .cat-filter { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; }
+  .cat-chip {
+    padding: 6px 14px; min-height: 32px; border-radius: 16px; font-size: 12px;
+    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.2);
+    color: #134; cursor: pointer; white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+  .cat-chip.on {
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    color:#fff; border-color: transparent;
+    box-shadow: 0 3px 10px rgba(79,172,254,0.4); font-weight: 600;
+  }
+  .cat-dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .cat-group { margin-bottom:14px; border-radius: 16px; overflow:hidden;
+               border: 1px solid rgba(255,255,255,0.3);
+               background: rgba(255,255,255,0.22); }
+  .cat-group-head { display:flex; align-items:center; gap:8px; padding:10px 14px; font-size:13px; font-weight:600; color:#112; }
+  .cat-group-head .cnt { margin-left:auto; font-size:11px; opacity:.7; font-weight:400; }
+  .cat-group-body { background: rgba(255,255,255,0.22); padding:6px 8px; }
+  .class-sub-head { display:flex; align-items:center; gap:8px; padding:7px 4px 3px; font-size:12px; color:#246; }
+  .class-sub-head .cs-name { font-weight:600; }
+  .class-sub-head .cs-cnt { margin-left:auto; color:#346; opacity:.7; }
+  .roster-box { display:flex; flex-wrap:wrap; gap:8px; max-height:180px; overflow-y:auto; padding:2px 0; }
+  .roster-box label {
+    display:inline-flex; align-items:center; gap:5px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius:16px; padding: 6px 12px; font-size:13px;
+    background: rgba(255,255,255,0.25); color:#112;
+    margin:0; cursor:pointer; backdrop-filter: blur(6px);
+  }
+  .roster-box input { margin:0; }
+  .roster-box input:checked + span { color:#eb3349; text-decoration:line-through; }
+
+  .req-item { padding:12px 14px; border-radius: 14px; margin-bottom:10px; color:#112; }
+  .req-item .sub { font-size:12px; color:#345; margin-top:3px; }
+  .tool-row { display:flex; gap:8px; margin-bottom:12px; }
+  .tool-row button {
+    flex:1; min-height: 44px; border-radius:12px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.28);
+    color:#134; font-size:13px; cursor:pointer; font-weight:600;
+    backdrop-filter: blur(8px);
+  }
+  .tool-row button.primary {
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    border-color: transparent; color:#fff;
+    box-shadow: 0 4px 14px rgba(79,172,254,0.4);
+  }
+
+  /* 单节 / 套课 切换 */
+  .req-mode { display:flex; gap:8px; margin-bottom:14px; }
+  .req-mode-btn {
+    flex:1; min-height: 44px; border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.45);
+    background: rgba(255,255,255,0.22);
+    color:#134; font-size:14px; cursor:pointer;
+    backdrop-filter: blur(8px);
+  }
+  .req-mode-btn.on {
+    background: linear-gradient(135deg,#4facfe,#00c6fb);
+    border-color: transparent; color:#fff; font-weight:600;
+    box-shadow: 0 4px 14px rgba(79,172,254,0.4);
+  }
+  .week-days { display:flex; gap:6px; flex-wrap:wrap; }
+  .week-days label {
+    flex:0 0 auto; padding: 10px 14px; min-height: 40px;
+    border: 1px solid rgba(255,255,255,0.4);
+    border-radius: 10px; font-size: 14px; color:#112;
+    background: rgba(255,255,255,0.25);
+    backdrop-filter: blur(6px);
+  }
+  .week-days input { width:auto; height:auto; margin-right:4px; vertical-align:middle; }
+  .pack-tip {
+    background: rgba(255,255,255,0.35); color:#134;
+    border-radius: 12px; padding:10px 14px; font-size:13px; margin-bottom:14px;
+    border: 1px solid rgba(255,255,255,0.45);
+  }
+  .modal-box.wide { max-width: 440px; }
+
+  /* 密码显示/隐藏 */
+  .pwd-wrap { position:relative; display:block; width:100%; }
+  .pwd-wrap input { width:100%; padding-right:50px !important; box-sizing:border-box; }
+  .pwd-eye {
+    position:absolute; right:4px; top:50%; transform:translateY(-50%);
+    border:none; background:transparent; font-size:18px; line-height:1;
+    padding:10px; cursor:pointer; color:#345;
+  }
+
+  /* 手机端：表单单列、加大触控区、modal 底上滑 */
+  @media (max-width: 480px) {
+    body { padding: 12px; }
+    .modal { padding: 0; align-items: flex-end; }
+    .modal-box, .modal-box.wide {
+      max-width: 100%; width: 100%;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 16px 28px; max-height: 92vh;
+    }
+    .field-row input, .field-row select, .field-row textarea { font-size: 16px; }
+    .field-row input, .field-row select { height: 48px; }
+    .week-days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .week-days label { text-align: center; padding: 12px 0; }
+    .req-mode-btn { min-height: 44px; font-size: 15px; }
+    .modal-actions button { padding: 14px; min-height: 48px; }
+    .header button { min-height: 44px; }
+    .tool-row button { min-height: 44px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- 登录页 -->
+  <div id="loginPage" style="display:none;">
+    <div class="login-card">
+      <div class="logo">📚</div>
+      <h1>教师打卡</h1>
+      <p>使用姓名全称登录</p>
+      <div class="field">
+        <label>姓名（登录账号）</label>
+        <input id="username" placeholder="如：张老师" autocomplete="username">
+      </div>
+      <div class="field">
+        <label>密码</label>
+        <input id="password" type="password" placeholder="初始密码为 姓名拼音小写+123456" autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary" id="loginBtn">登 录</button>
+    </div>
+  </div>
+
+  <!-- 主页面 -->
+  <div id="mainPage" style="display:none;">
+    <div class="header">
+      <div class="who">
+        <div class="avatar" id="avatarBox">师</div>
+        <div>
+          <h2 id="teacherName"></h2>
+          <div class="sub" id="teacherNo"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="openSettingModal()">设置</button>
+        <button onclick="logout()">退出</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot"></span>我的课表</h3>
+      <div class="sched-tabs">
+        <button class="sched-tab on" id="tabUpcoming" onclick="switchSchedTab('upcoming')">待上课</button>
+        <button class="sched-tab" id="tabDone" onclick="switchSchedTab('done')">已上课</button>
+      </div>
+      <div class="tool-row">
+        <button class="primary" onclick="openRequestModal()">＋ 申请排课</button>
+        <button onclick="openStudentModal()">学生名单</button>
+        <button onclick="openBlankAttendance()">补录打卡</button>
+      </div>
+      <div id="scheduleList"><div class="empty">加载中...</div></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="dot"></span>最近打卡记录</h3>
+      <div id="historyList"><div class="empty">加载中...</div></div>
+    </div>
+
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 打卡面板（点课次「去打卡」或「补录打卡」后打开） -->
+<div class="modal" id="attendanceModal">
+  <div class="modal-box wide">
+    <h3 id="attTitle">打卡</h3>
+    <div class="lesson-tip" id="lessonTip" style="display:none;"></div>
+    <div class="field-row" id="classRow">
+      <label>班级</label>
+      <select id="classSelect" onchange="onClassChange()">
+        <option value="">加载中...</option>
+      </select>
+    </div>
+    <div id="studentList"></div>
+    <div class="field-row" style="margin-top:16px;">
+      <label>上课时长</label>
+      <select id="durationSelect">
+        <option value="90">1.5 小时</option>
+        <option value="120" selected>2 小时</option>
+      </select>
+    </div>
+    <div class="field-row" id="timeRow" style="margin-top:12px;display:none;">
+      <label>实际上课时间</label>
+      <input id="startTimeInput" type="datetime-local">
+    </div>
+    <div class="modal-actions" style="margin-top:16px;">
+      <button onclick="closeAttendanceModal()">取消</button>
+      <button class="btn-ok" id="attSubmitBtn" onclick="submitAttendance()">提交打卡</button>
+    </div>
+  </div>
+</div>
+
+<!-- 删除课次（单节 / 整套） -->
+<div class="modal" id="delModal">
+  <div class="modal-box">
+    <h3>删除课次</h3>
+    <div class="lesson-tip" id="delTip"></div>
+    <div class="modal-actions" style="flex-direction:column;">
+      <button class="btn-danger" onclick="doDeleteSchedule('one')">只删除本节</button>
+      <button class="btn-danger" onclick="doDeleteSchedule('series')">删除整套（未上过的课次）</button>
+      <button onclick="closeDelModal()">取消</button>
+    </div>
+  </div>
+</div>
+
+<!-- 学生名单变更申请 -->
+<div class="modal" id="studentModal">
+  <div class="modal-box wide">
+    <h3>学生名单变更</h3>
+    <div class="lesson-tip" style="display:block;">提交后由管理端审核，通过后立即生效；已上过的课次名单不变。</div>
+    <div class="field-row">
+      <label>班级</label>
+      <select id="stuClass" onchange="onStuClassChange()"><option value="">加载中...</option></select>
+    </div>
+    <div class="field-row">
+      <label>当前名单（勾选表示移除该学生）</label>
+      <div id="stuRoster" class="roster-box"></div>
+    </div>
+    <div class="field-row">
+      <label>新增学生（逗号或换行分隔）</label>
+      <textarea id="stuAdd" rows="2" placeholder="张小明,李小红"></textarea>
+    </div>
+    <div class="field-row">
+      <label>说明（选填）</label>
+      <input id="stuReason" placeholder="如：新学员插班 / 学生退课">
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeStudentModal()">取消</button>
+      <button class="btn-ok" onclick="submitStudentRequest()">提交审核</button>
+    </div>
+    <h3 style="margin-top:20px;font-size:14px;">我的学生变更申请</h3>
+    <div id="stuReqList"><div class="empty">暂无申请</div></div>
+  </div>
+</div>
+
+<!-- 申请排课 -->
+<div class="modal" id="requestModal">
+  <div class="modal-box wide">
+    <h3>申请排课</h3>
+    <div class="req-mode" style="margin-bottom:12px;">
+      <button id="clsModeOld" class="req-mode-btn on" onclick="setClassMode('old')">已有班级</button>
+      <button id="clsModeNew" class="req-mode-btn" onclick="setClassMode('new')">新建班级</button>
+    </div>
+    <div id="oldClassBox">
+      <div class="field-row">
+        <label>班级</label>
+        <select id="reqClass" onchange="updateLessonHint()"><option value="">选择班级</option></select>
+      </div>
+    </div>
+    <div id="newClassBox" style="display:none;">
+      <div class="field-row">
+        <label>年级</label>
+        <select id="reqClassGrade" onchange="syncTeacherClassName()"></select>
+      </div>
+      <div class="field-row">
+        <label>学科</label>
+        <select id="reqClassSubject" onchange="syncTeacherClassName()"></select>
+      </div>
+      <div class="field-row">
+        <label>班型</label>
+        <select id="reqClassType" onchange="syncTeacherClassName()"></select>
+      </div>
+      <div class="field-row">
+        <label>班级名称（自动拼装，可覆盖）</label>
+        <input id="reqClassName" readonly placeholder="自动生成，可覆盖" style="background:#f5f6fa;" onfocus="this.removeAttribute('readonly')" onblur="if(!this.value)this.setAttribute('readonly','readonly')">
+      </div>
+      <div class="field-row">
+        <label>班次代码</label>
+        <input id="reqClassCode" value="D" placeholder="如 D（课次显示为 D1、D2）" maxlength="6" style="text-transform:uppercase;" oninput="updateLessonHint()">
+      </div>
+      <div class="field-row">
+        <label>学生名单（每行一个）</label>
+        <textarea id="reqStudents" rows="4" placeholder="张小明&#10;李小红"></textarea>
+      </div>
+    </div>
+    <div class="req-mode">
+      <button id="reqModeSingle" class="req-mode-btn on" onclick="setReqMode('single')">单节</button>
+      <button id="reqModePack" class="req-mode-btn" onclick="setReqMode('pack')">套课（多节）</button>
+    </div>
+    <div id="reqSingleBox">
+      <div class="field-row">
+        <label>上课日期</label>
+        <input id="reqDate" type="date">
+      </div>
+    </div>
+    <div id="reqPackBox" style="display:none;">
+      <div class="field-row">
+        <label>开始日期</label>
+        <input id="packStart" type="date" onchange="updatePackPreview()">
+      </div>
+      <div class="field-row">
+        <label>排几周</label>
+        <select id="packWeeks" onchange="updatePackPreview()">
+          <option>1</option><option>2</option><option selected>3</option><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <label>每周上课日（可多选，如单周两节）</label>
+        <div class="week-days">
+          <label><input type="checkbox" value="1" onchange="updatePackPreview()">一</label>
+          <label><input type="checkbox" value="2" onchange="updatePackPreview()">二</label>
+          <label><input type="checkbox" value="3" onchange="updatePackPreview()">三</label>
+          <label><input type="checkbox" value="4" onchange="updatePackPreview()">四</label>
+          <label><input type="checkbox" value="5" onchange="updatePackPreview()">五</label>
+          <label><input type="checkbox" value="6" onchange="updatePackPreview()">六</label>
+          <label><input type="checkbox" value="0" onchange="updatePackPreview()">日</label>
+        </div>
+      </div>
+      <div class="pack-tip" id="packPreview">请选择每周上课日</div>
+      <div id="packDayTimes" style="margin-top:10px;"></div>
+    </div>
+    <div class="field-row">
+      <label>上课时间（默认，未单独设置的星期使用）</label>
+      <input id="reqTime" type="time" value="18:30" onchange="syncPackTimeDefaults()">
+    </div>
+    <div class="field-row">
+      <label>从第几节开始（默认第 1 节，可手动调整）</label>
+      <input id="reqStartNo" type="number" min="1" max="999" value="1" oninput="updateLessonHint()">
+      <div class="hint" id="reqLessonHint" style="font-size:12px;color:#999;margin-top:4px;"></div>
+    </div>
+    <div class="field-row">
+      <label>时长</label>
+      <select id="reqDuration"><option value="90">1.5 小时</option><option value="120" selected>2 小时</option></select>
+    </div>
+    <div class="field-row">
+      <label>说明（选填）</label>
+      <textarea id="reqRemark" placeholder="如：本周加一节复习课 / 学生请假顺延"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button onclick="closeRequestModal()">取消</button>
+      <button class="btn-ok" onclick="submitRequest()">提交审核</button>
+    </div>
+    <h3 style="margin-top:18px;font-size:14px;">我的申请</h3>
+    <div id="reqList"><div class="empty">暂无申请</div></div>
+  </div>
+</div>
+
+<!-- 设置弹窗 -->
+<div class="modal" id="settingModal">
+  <div class="modal-box">
+    <h3>账号设置</h3>
+    <label>手机号</label>
+    <input id="setPhone" placeholder="绑定手机号，便于找回密码">
+    <label>邮箱</label>
+    <input id="setEmail" type="email" placeholder="绑定邮箱，打卡记录会发到该邮箱">
+    <button class="btn btn-primary" style="height:42px;margin-bottom:14px;" onclick="saveBindings()">保存绑定信息</button>
+    <hr style="border:none;border-top:1px solid #eee;margin:6px 0 14px;">
+    <label>原密码</label>
+    <input id="oldPwd" type="password" placeholder="原密码">
+    <label>新密码</label>
+    <input id="newPwd" type="password" placeholder="新密码（至少 6 位，仅英文/数字）">
+    <div style="font-size:11px;color:#f39c12;margin-bottom:10px;">密码不能包含中文；教师修改密码需管理员审核后生效</div>
+    <div class="modal-actions">
+      <button onclick="closeSettingModal()">取消</button>
+      <button class="btn-ok" onclick="submitChangePwd()">提交改密</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '/api';
+const GRADE_OPTIONS = [
+  ['K0','幼儿园小班'], ['K1','幼儿园中班'], ['K2','幼儿园大班'],
+  ['P0','幼小衔接'], ['P1','一年级'], ['P2','二年级'], ['P3','三年级'], ['P4','四年级'], ['P5','五年级'],
+  ['J0','小初衔接'], ['J1','初一'], ['J2','初二'], ['J3','初三'],
+  ['H0','初高衔接'], ['H1','高一'], ['H2','高二'], ['H3','高三']
+];
+let teacherConstants = null;
+let token = localStorage.getItem('teacher_token');
+let teacher = null;
+let classes = [];
+let students = [];
+let states = {}; // name -> 'present' | 'leave'
+
+function gradeLabel(code) {
+  const item = GRADE_OPTIONS.find(g => g[0] === code);
+  return item ? item[1] : (code || '');
+}
+
+window.onload = () => {
+  if (token && localStorage.getItem('teacherInfo')) {
+    teacher = JSON.parse(localStorage.getItem('teacherInfo'));
+    showMain();
+  } else {
+    showLogin();
+  }
+  document.getElementById('loginBtn').onclick = doLogin;
+  document.getElementById('password').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+};
+
+function showLogin() {
+  document.getElementById('loginPage').style.display = 'block';
+  document.getElementById('mainPage').style.display = 'none';
+}
+function showMain() {
+  document.getElementById('loginPage').style.display = 'none';
+  document.getElementById('mainPage').style.display = 'block';
+  document.getElementById('teacherName').textContent = teacher.nickname || teacher.name;
+  document.getElementById('teacherNo').textContent = teacher.employeeNo ? ('工号 ' + teacher.employeeNo) : '';
+  if (teacher.avatar) {
+    document.getElementById('avatarBox').innerHTML = '<img src="' + teacher.avatar + '">';
+  } else {
+    document.getElementById('avatarBox').textContent = (teacher.name || '师').slice(0, 1);
+  }
+  loadClasses();
+  loadSchedules();
+  loadHistory();
+  // 加载 constants，填充申请套课的下拉选项
+  (async () => {
+    try {
+      teacherConstants = await api('/constants/classes');
+      fillTeacherCourseSelects();
+    } catch(e) {}
+  })();
+}
+
+function fillTeacherCourseSelects() {
+  if (!teacherConstants) return;
+  const gradeSel = document.getElementById('reqClassGrade');
+  const subjSel = document.getElementById('reqClassSubject');
+  const typeSel = document.getElementById('reqClassType');
+  if (gradeSel) gradeSel.innerHTML = '<option value="">请选择年级</option>' +
+    GRADE_OPTIONS.map(g => '<option value="' + g[0] + '">' + g[0] + ' · ' + g[1] + '</option>').join('');
+  const subjects = (teacherConstants.subjects || []);
+  if (subjSel) subjSel.innerHTML = '<option value="">请选择学科</option>' +
+    subjects.map(s => '<option value="' + s + '">' + s + '</option>').join('');
+  const types = (teacherConstants.classTypes || []);
+  if (typeSel) typeSel.innerHTML = '<option value="">请选择班型</option>' +
+    types.map(t => '<option value="' + t + '">' + t + '</option>').join('');
+}
+
+function syncTeacherClassName() {
+  const g = document.getElementById('reqClassGrade').value;
+  const s = document.getElementById('reqClassSubject').value;
+  const t = document.getElementById('reqClassType').value;
+  const nameEl = document.getElementById('reqClassName');
+  if (!nameEl.value || nameEl.getAttribute('readonly') === 'readonly') {
+    nameEl.value = [g, s, t].filter(Boolean).join('-');
+  }
+}
+
+async function api(path, options) {
+  options = options || {};
+  options.headers = Object.assign({'Content-Type': 'application/json'}, options.headers || {});
+  if (token) options.headers['Authorization'] = 'Bearer ' + token;
+  const r = await fetch(API + path, options);
+  const d = await r.json();
+  if (d.code === 401) { logout(); throw new Error(d.msg); }
+  if (d.code !== 200) throw new Error(d.msg || '请求失败');
+  return d.data;
+}
+
+// ---------- 登录 ----------
+async function doLogin() {
+  const u = document.getElementById('username').value.trim();
+  const p = document.getElementById('password').value;
+  if (!u || !p) return toast('请输入姓名和密码');
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true; btn.textContent = '登录中...';
+  try {
+    const r = await fetch(API + '/auth/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({username: u, password: p})
+    });
+    const d = await r.json();
+    if (d.code !== 200) { toast(d.msg || '登录失败'); return; }
+    if (d.data.user.role !== 'TEACHER') { toast('该账号不是教师账号，请联系管理员'); return; }
+    token = d.data.token;
+    teacher = d.data.user;
+    localStorage.setItem('teacher_token', token);
+    localStorage.setItem('teacherInfo', JSON.stringify(teacher));
+    showMain();
+  } catch (e) {
+    toast('网络错误，请重试');
+  } finally {
+    btn.disabled = false; btn.textContent = '登 录';
+  }
+}
+
+function logout() {
+  localStorage.removeItem('teacher_token');
+  localStorage.removeItem('teacherInfo');
+  token = null; teacher = null;
+  location.reload();
+}
+
+// ---------- 班级 ----------
+async function loadClasses() {
+  const sel = document.getElementById('classSelect');
+  const reqSel = document.getElementById('reqClass');
+  try {
+    classes = await api('/class/list');
+    const opts = classes.map(c => '<option value="' + c.id + '">' + c.name + '（' + c.code + '，' + c.studentCount + '人）</option>').join('');
+    sel.innerHTML = classes.length ? opts : '<option value="">暂无排课，请联系管理员</option>';
+    reqSel.innerHTML = classes.length ? '<option value="">选择班级</option>' + opts : '<option value="">暂无可申请班级</option>';
+  } catch (e) {
+    sel.innerHTML = '<option value="">加载失败</option>';
+    reqSel.innerHTML = '<option value="">加载失败</option>';
+  }
+}
+
+async function loadStudents() {
+  const classId = document.getElementById('classSelect').value;
+  const box = document.getElementById('studentList');
+  const tip = document.getElementById('lessonTip');
+  if (!classId) { box.innerHTML = ''; tip.style.display = 'none'; return; }
+  box.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const d = await api('/class/detail?id=' + classId);
+    students = d.students || [];
+    states = {};
+    students.forEach(n => states[n] = 'present');
+    document.getElementById('durationSelect').value = String(d.durationMinutes || 120);
+    tip.style.display = 'block';
+    tip.textContent = '本次是 ' + d.nextLessonLabel + '（第 ' + d.nextLessonNo + ' 次课）· ' + d.name;
+    renderStudents();
+  } catch (e) {
+    box.innerHTML = '<div class="empty">' + e.message + '</div>';
+  }
+}
+
+function renderStudents() {
+  const box = document.getElementById('studentList');
+  if (!students.length) { box.innerHTML = '<div class="empty">该班级还没有学生名单</div>'; return; }
+  box.innerHTML = students.map((name, i) => {
+    const st = states[name] || 'present';
+    return '' +
+      '<div class="stu-row" data-name="' + name + '">' +
+        '<div class="stu-name">' + (i + 1) + '. ' + name + '</div>' +
+        '<button class="state-btn ' + (st === 'present' ? 'on-present' : '') + '" onclick="setState(\'' + name + '\',\'present\')">✓ 出勤</button>' +
+        '<button class="state-btn ' + (st === 'leave' ? 'on-leave' : '') + '" onclick="setState(\'' + name + '\',\'leave\')">✗ 请假</button>' +
+        '<input class="leave-reason ' + (st === 'leave' ? 'show' : '') + '" data-name="' + name + '" placeholder="请填写请假原因">' +
+      '</div>';
+  }).join('');
+}
+
+function setState(name, st) {
+  const was = states[name];
+  states[name] = st;
+  renderStudents();
+  // 保留已填写的请假原因
+  document.querySelectorAll('.leave-reason').forEach(inp => {
+    const n = inp.getAttribute('data-name');
+    if (states[n] === 'leave' && elReasons[n]) inp.value = elReasons[n];
+    inp.addEventListener('input', () => { elReasons[n] = inp.value; });
+  });
+}
+
+const elReasons = {};
+document.addEventListener('input', e => {
+  if (e.target.classList && e.target.classList.contains('leave-reason')) {
+    elReasons[e.target.getAttribute('data-name')] = e.target.value;
+  }
+});
+
+// ---------- 我的课表 ----------
+let scheduleCache = [];
+let schedTab = 'upcoming';
+let activeSchedule = null;
+let lastCheckedId = null;
+
+async function loadSchedules() {
+  try {
+    scheduleCache = await api('/schedule/my');
+    renderSchedules();
+  } catch (e) {
+    document.getElementById('scheduleList').innerHTML = '<div class="empty">' + e.message + '</div>';
+  }
+}
+
+function switchSchedTab(t) {
+  schedTab = t;
+  document.getElementById('tabUpcoming').classList.toggle('on', t === 'upcoming');
+  document.getElementById('tabDone').classList.toggle('on', t === 'done');
+  renderSchedules();
+}
+
+function auditBadge(s) {
+  if (s.auditStatus === 1) return '<span class="status-badge badge-ok">已通过</span>';
+  if (s.auditStatus === 2) return '<span class="status-badge badge-rej">已驳回</span>';
+  return '<span class="status-badge badge-wait">待审核</span>';
+}
+
+// 课次太多时默认只显示前 5 条，点击「展开全部」查看更多
+let expandSched = { upcoming: false, done: false };
+const SCHED_CAP = 5;
+
+function toggleExpandSched() {
+  expandSched[schedTab] = !expandSched[schedTab];
+  renderSchedules();
+}
+
+// 课程分类：按班级名称中的年级代码分组，课次编号仅用于标识第几次课
+let activeCat = '';
+const CAT_COLORS = ['#4a6cf7', '#22b8cf', '#fa5252', '#51cf66', '#fab005', '#cc5de8', '#868e96'];
+function catOf(s) {
+  const g = (s.className || '').match(/^([KPHJ]\d+|G\d+)/i);
+  return g ? g[1].toUpperCase() : '其他';
+}
+function catColor(cat) {
+  let h = 0; for (let i = 0; i < cat.length; i++) h = (h * 31 + cat.charCodeAt(i)) & 0xffffffff;
+  return CAT_COLORS[Math.abs(h) % CAT_COLORS.length];
+}
+function setCatFilter(cat) { activeCat = cat; renderSchedules(); }
+
+function renderSchedules() {
+  const box = document.getElementById('scheduleList');
+  const upcoming = scheduleCache.filter(s => s.status === 0).sort((a, b) => (a.plannedAt < b.plannedAt ? -1 : 1));
+  const done = scheduleCache.filter(s => s.status === 1).sort((a, b) => (a.plannedAt > b.plannedAt ? -1 : 1));
+  document.getElementById('tabUpcoming').textContent = '待上课（' + upcoming.length + '）';
+  document.getElementById('tabDone').textContent = '已上课（' + done.length + '）';
+  let list = schedTab === 'upcoming' ? upcoming : done;
+  if (!list.length) {
+    box.innerHTML = '<div class="empty">' + (schedTab === 'upcoming' ? '暂无待上课次' : '暂无已上课次') + '</div>';
+    return;
+  }
+  // 按课程分类分组
+  let cats = [];
+  const map = {};
+  list.forEach(s => {
+    const c = catOf(s);
+    if (!map[c]) { map[c] = []; cats.push(c); }
+    map[c].push(s);
+  });
+  cats.sort();
+
+  // 分类筛选
+  const chips = '<div class="cat-filter"><span class="cat-chip' + (activeCat === '' ? ' on' : '') + '" onclick="setCatFilter(\'\')">全部 ' + list.length + '</span>' +
+    cats.map(c => '<span class="cat-chip' + (activeCat === c ? ' on' : '') + '" onclick="setCatFilter(\'' + c + '\')"><span class="cat-dot" style="background:' + catColor(c) + '"></span>' + c + ' ' + map[c].length + '</span>').join('') + '</div>';
+
+  if (activeCat) cats = [activeCat];
+  const expanded = expandSched[schedTab];
+  let html = '';
+  cats.forEach(cat => {
+    const items = map[cat] || [];
+    if (!items.length) return;
+    const color = catColor(cat);
+    // 同类课程再按班级整合：同一班级的课次聚在一起，按时间排列
+    const byClass = {};
+    const classOrder = [];
+    items.forEach(s => {
+      const cn = s.className || '未命名班级';
+      if (!byClass[cn]) { byClass[cn] = []; classOrder.push(cn); }
+      byClass[cn].push(s);
+    });
+    let body = '';
+    let hidden = 0;
+    classOrder.forEach(cn => {
+      const arr = byClass[cn];
+      const shown = expanded ? arr : arr.slice(0, SCHED_CAP);
+      hidden += arr.length - shown.length;
+      body += '<div class="class-sub-head">' +
+        '<span class="cs-name">' + cn + '</span>' +
+        '<span class="cs-cnt">' + arr.length + ' 节</span></div>' +
+        shown.map(s => schedItemHtml(s)).join('');
+    });
+    html += '<div class="cat-group">' +
+      '<div class="cat-group-head" style="background:' + color + ';color:#fff;">' +
+        '<span class="cat-dot" style="background:#fff;"></span>' + cat + ' 类课程' +
+        '<span class="cnt">' + items.length + ' 节 / ' + classOrder.length + ' 个班级</span></div>' +
+      '<div class="cat-group-body">' + body + '</div></div>';
+    if (hidden > 0) {
+      html += '<button class="mini-link" style="width:100%;text-align:center;padding:6px 0;margin-top:-6px;margin-bottom:12px;text-decoration:none;color:#4a6cf7;" onclick="toggleExpandSched()">▼ 展开 ' + cat + ' 类其余 ' + hidden + ' 节</button>';
+    }
+  });
+  box.innerHTML = chips + html;
+  lastCheckedId = null;
+}
+
+function schedItemHtml(s) {
+  const issueTag = s.issueFlag ? '<span class="status-badge badge-issue">有问题</span>' : '';
+  const note = s.issueFlag && s.issueNote ? '<div class="issue-note">说明：' + s.issueNote + '</div>' : '';
+  const actions = s.status === 0
+    ? '<div class="sched-actions">' +
+        '<button class="btn-go" onclick="pickSchedule(' + s.id + ')">去打卡</button>' +
+        '<button class="mini-link warn" onclick="reportIssue(' + s.id + ')">' + (s.issueFlag ? '改说明' : '有问题?') + '</button>' +
+        '<button class="mini-link" onclick="openDeleteSchedule(' + s.id + ')">删除</button>' +
+      '</div>'
+    : '<div class="sched-actions"><span class="done-tag">✓ 已打卡</span>' + auditBadge(s) +
+      '<button class="mini-link warn" onclick="reportIssue(' + s.id + ')">' + (s.issueFlag ? '改说明' : '反馈') + '</button></div>';
+  return '<div class="sched-item' + (s.status === 1 ? ' done' : '') + (lastCheckedId === s.id ? ' flash' : '') + '">' +
+    '<div class="sched-main">' +
+      '<div class="l1">' + s.lessonLabel + ' · ' + s.className + ' ' + issueTag + '</div>' +
+      '<div class="l2">' + s.date + ' ' + s.time + ' · ' + (s.durationMinutes / 60) + ' 小时 · ' + s.students.length + ' 人' +
+        (s.remark ? ' · ' + s.remark : '') + '</div>' + note +
+    '</div>' + actions + '</div>';
+}
+
+function pickSchedule(id) {
+  const s = scheduleCache.find(x => x.id === id);
+  if (!s) return toast('课次不存在，请刷新');
+  const sel = document.getElementById('classSelect');
+  if (!Array.from(sel.options).some(o => o.value === String(s.classId))) {
+    sel.insertAdjacentHTML('beforeend', '<option value="' + s.classId + '">' + s.className + '</option>');
+  }
+  activeSchedule = s;
+  sel.value = String(s.classId);
+  sel.disabled = true;
+  document.getElementById('classRow').style.display = 'none';
+  document.getElementById('attTitle').textContent = '打卡 · ' + s.lessonLabel;
+  students = (s.students || []).slice();
+  states = {};
+  students.forEach(n => states[n] = 'present');
+  document.getElementById('durationSelect').value = String(s.durationMinutes);
+  const tip = document.getElementById('lessonTip');
+  tip.style.display = 'block';
+  tip.textContent = '按课表打卡：' + s.lessonLabel + ' · ' + s.date + ' ' + s.time + ' · ' + s.className;
+  document.getElementById('timeRow').style.display = 'flex';
+  document.getElementById('startTimeInput').value = s.date + 'T' + s.time;
+  renderStudents();
+  document.getElementById('attendanceModal').classList.add('show');
+}
+
+function openBlankAttendance() {
+  activeSchedule = null;
+  const sel = document.getElementById('classSelect');
+  sel.disabled = false;
+  document.getElementById('classRow').style.display = 'block';
+  document.getElementById('attTitle').textContent = '补录打卡';
+  document.getElementById('lessonTip').style.display = 'none';
+  document.getElementById('timeRow').style.display = 'none';
+  document.getElementById('studentList').innerHTML = '';
+  students = []; states = {};
+  document.getElementById('attendanceModal').classList.add('show');
+  if (sel.value) loadStudents();
+}
+
+function closeAttendanceModal() {
+  document.getElementById('attendanceModal').classList.remove('show');
+  activeSchedule = null;
+}
+
+function onClassChange() {
+  // 手动切换班级 = 临时补录，取消课表关联
+  activeSchedule = null;
+  document.getElementById('timeRow').style.display = 'none';
+  loadStudents();
+}
+
+// ---------- 课次问题反馈 ----------
+async function reportIssue(id) {
+  const s = scheduleCache.find(x => x.id === id);
+  if (!s) return toast('课次不存在，请刷新');
+  const input = prompt('填写本课次的问题说明（留空则清除标记）：', s.issueNote || '');
+  if (input === null) return;
+  try {
+    await api('/schedule/issue', {method:'POST', body: JSON.stringify({scheduleId: id, note: input.trim()})});
+    toast(input.trim() ? '已提交问题说明' : '已清除问题标记');
+    loadSchedules();
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- 删除课次（单节 / 整套） ----------
+let deleteTarget = null;
+function openDeleteSchedule(id) {
+  const s = scheduleCache.find(x => x.id === id);
+  if (!s) return toast('课次不存在，请刷新');
+  if (s.status !== 0) return toast('已上过的课次不能删除');
+  deleteTarget = s;
+  document.getElementById('delTip').textContent =
+    s.lessonLabel + ' · ' + s.className + ' · ' + s.date + ' ' + s.time;
+  document.getElementById('delModal').classList.add('show');
+}
+
+function closeDelModal() {
+  deleteTarget = null;
+  document.getElementById('delModal').classList.remove('show');
+}
+
+async function doDeleteSchedule(scope) {
+  if (!deleteTarget) return;
+  const s = deleteTarget;
+  const msg = scope === 'series'
+    ? '确定删除《' + s.className + '》整套课中所有未上过的课次吗？此操作不可恢复。'
+    : '确定删除 ' + s.lessonLabel + '（' + s.date + ' ' + s.time + '）吗？';
+  if (!confirm(msg)) return;
+  try {
+    const r = await api('/schedule/my/delete', {method:'POST', body: JSON.stringify({id: s.id, scope: scope})});
+    closeDelModal();
+    toast(scope === 'series' ? ('已删除 ' + (r.count || 0) + ' 节课次') : '已删除该课次');
+    await loadSchedules();
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- 学生名单变更（提交管理端审核） ----------
+let stuClasses = [];
+let stuCurrent = [];
+
+async function openStudentModal() {
+  document.getElementById('studentModal').classList.add('show');
+  document.getElementById('stuAdd').value = '';
+  document.getElementById('stuReason').value = '';
+  const sel = document.getElementById('stuClass');
+  sel.innerHTML = '<option value="">加载中...</option>';
+  try {
+    stuClasses = await api('/class/list');
+    if (!stuClasses.length) {
+      sel.innerHTML = '<option value="">暂无班级</option>';
+      document.getElementById('stuRoster').innerHTML = '<span style="color:#999;font-size:12px;">暂无可管理班级</span>';
+    } else {
+      sel.innerHTML = stuClasses.map(c => '<option value="' + c.id + '">' + c.name + '（' + c.studentCount + ' 人）</option>').join('');
+      await onStuClassChange();
+    }
+  } catch (e) {
+    sel.innerHTML = '<option value="">加载失败</option>';
+    toast(e.message);
+  }
+  loadStudentRequests();
+}
+
+async function onStuClassChange() {
+  const id = document.getElementById('stuClass').value;
+  const box = document.getElementById('stuRoster');
+  if (!id) { box.innerHTML = '<span style="color:#999;font-size:12px;">请选择班级</span>'; return; }
+  box.innerHTML = '<span style="color:#999;font-size:12px;">加载中...</span>';
+  try {
+    const d = await api('/class/detail?id=' + id);
+    stuCurrent = d.students || [];
+    box.innerHTML = stuCurrent.length
+      ? stuCurrent.map(n => '<label><input type="checkbox" value="' + n + '"><span>' + n + '</span></label>').join('')
+      : '<span style="color:#999;font-size:12px;">暂无学生</span>';
+  } catch (e) {
+    stuCurrent = [];
+    box.innerHTML = '<span style="color:#999;font-size:12px;">' + e.message + '</span>';
+  }
+}
+
+function closeStudentModal() { document.getElementById('studentModal').classList.remove('show'); }
+
+async function submitStudentRequest() {
+  const classId = parseInt(document.getElementById('stuClass').value);
+  if (!classId) return toast('请选择班级');
+  const removeNames = Array.from(document.querySelectorAll('#stuRoster input:checked')).map(x => x.value);
+  const addNames = document.getElementById('stuAdd').value.split(/[\n,，、;；]+/).map(s => s.trim()).filter(Boolean);
+  const reason = document.getElementById('stuReason').value.trim();
+  if (!addNames.length && !removeNames.length) return toast('请勾选要移除的学生，或填写新增学生');
+  if (stuCurrent.length - removeNames.length + addNames.length < 1) return toast('班级至少保留 1 名学生');
+  try {
+    await api('/student/request', {method:'POST', body: JSON.stringify({classId, addNames, removeNames, reason})});
+    toast('已提交，等待管理端审核');
+    document.getElementById('stuAdd').value = '';
+    document.getElementById('stuReason').value = '';
+    await onStuClassChange();
+    loadStudentRequests();
+  } catch (e) { toast(e.message); }
+}
+
+async function loadStudentRequests() {
+  const box = document.getElementById('stuReqList');
+  try {
+    const list = await api('/student/request/my');
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无申请</div>'; return; }
+    box.innerHTML = list.slice(0, 8).map(r => {
+      const st = r.status === 1 ? '<span class="status-badge badge-ok">已通过</span>'
+        : r.status === 2 ? '<span class="status-badge badge-rej">已驳回</span>'
+        : '<span class="status-badge badge-wait">待审核</span>';
+      const parts = [];
+      if (r.addNames.length) parts.push('新增 ' + r.addNames.join('、'));
+      if (r.removeNames.length) parts.push('移除 ' + r.removeNames.join('、'));
+      return '<div class="req-item">' + (r.className || '') + ' · ' + parts.join('，') + ' ' + st +
+        '<div class="sub">' + (r.reason || '') + (r.auditRemark ? ' · 审核说明：' + r.auditRemark : '') + '</div></div>';
+    }).join('');
+  } catch (e) { box.innerHTML = '<div class="empty">' + e.message + '</div>'; }
+}
+
+// ---------- 申请排课 ----------
+function todayLocal() {
+  return new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+}
+
+// 班级来源：已有班级 / 新建班级（与管理员端逻辑一致）
+let classMode = 'old';
+function setClassMode(mode) {
+  classMode = mode;
+  document.getElementById('clsModeOld').classList.toggle('on', mode === 'old');
+  document.getElementById('clsModeNew').classList.toggle('on', mode === 'new');
+  document.getElementById('oldClassBox').style.display = mode === 'old' ? '' : 'none';
+  document.getElementById('newClassBox').style.display = mode === 'new' ? '' : 'none';
+  updateLessonHint();
+}
+
+async function openRequestModal() {
+  document.getElementById('reqDate').value = todayLocal();
+  document.getElementById('packStart').value = todayLocal();
+  document.getElementById('reqRemark').value = '';
+  document.getElementById('reqStartNo').value = 1;
+  packDayTimeMap = {};
+  setClassMode('old');
+  setReqMode('single');
+  updatePackPreview();
+  document.getElementById('requestModal').classList.add('show');
+  await loadRequests();
+}
+
+// 单节 / 套课 切换，默认单节保持界面简洁
+let reqMode = 'single';
+function setReqMode(mode) {
+  reqMode = mode;
+  document.getElementById('reqModeSingle').classList.toggle('on', mode === 'single');
+  document.getElementById('reqModePack').classList.toggle('on', mode === 'pack');
+  document.getElementById('reqSingleBox').style.display = mode === 'single' ? '' : 'none';
+  document.getElementById('reqPackBox').style.display = mode === 'pack' ? '' : 'none';
+  renderPackDayTimes();
+  updateLessonHint();
+}
+
+// 套课各星期单独上课时间 { '1': '08:00', '2': '17:00' }
+let packDayTimeMap = {};
+const WD_NAMES = ['日', '一', '二', '三', '四', '五', '六'];
+
+function checkedPackDays() {
+  return Array.from(document.querySelectorAll('.week-days input:checked'))
+    .map(x => parseInt(x.value))
+    .sort((a, b) => (a === 0 ? 7 : a) - (b === 0 ? 7 : b));
+}
+
+/** 勾选多个星期时，可为每个星期设置不同上课时间 */
+function renderPackDayTimes() {
+  const box = document.getElementById('packDayTimes');
+  if (!box) return;
+  if (reqMode !== 'pack') { box.innerHTML = ''; return; }
+  const days = checkedPackDays();
+  if (!days.length) { box.innerHTML = ''; return; }
+  const def = document.getElementById('reqTime').value || '18:30';
+  box.innerHTML = '<label style="font-size:12px;color:#888;display:block;margin-bottom:6px;">各星期上课时间（可不同，如周一 08:00、周二 17:00）</label>' +
+    days.map(d => {
+      const val = packDayTimeMap[d] || packDayTimeMap[String(d)] || def;
+      return '<div style="display:inline-flex;align-items:center;gap:6px;margin:0 14px 6px 0;font-size:13px;color:#555;">周' + WD_NAMES[d] +
+        '<input type="time" value="' + val + '" onchange="packDayTimeMap[' + d + ']=this.value;updateLessonHint()" ' +
+        'style="height:36px;border:1px solid #e5e7eb;border-radius:8px;padding:0 8px;">' +
+        '</div>';
+    }).join('');
+}
+
+/** 默认时间变化时，重置各星期单独时间 */
+function syncPackTimeDefaults() {
+  packDayTimeMap = {};
+  renderPackDayTimes();
+  updateLessonHint();
+}
+
+/** 提示本次是第几节开始、共几节 */
+function updateLessonHint() {
+  const hint = document.getElementById('reqLessonHint');
+  if (!hint) return;
+  const start = parseInt(document.getElementById('reqStartNo').value) || 1;
+  const n = reqMode === 'pack' ? packDates().length : 1;
+  let code = document.getElementById('reqClassCode').value.trim().toUpperCase() || 'D';
+  if (classMode === 'old') {
+    const c = classes.find(x => String(x.id) === document.getElementById('reqClass').value);
+    if (c && c.code) code = c.code;
+  }
+  if (!n) { hint.textContent = '本次从第 ' + start + ' 节开始；请选择上课日期'; return; }
+  hint.textContent = '本次从第 ' + start + ' 节开始，共 ' + n + ' 节' +
+    (n > 1 ? '（' + code + start + ' ~ ' + code + (start + n - 1) + '）' : '（' + code + start + '）');
+}
+
+/** 按「开始日期 + 周数 + 每周上课日」生成套课日期列表（周一为一周起点） */
+function packDates() {
+  const start = document.getElementById('packStart').value;
+  if (!start) return [];
+  const weeks = parseInt(document.getElementById('packWeeks').value) || 1;
+  const days = Array.from(document.querySelectorAll('.week-days input:checked')).map(x => parseInt(x.value));
+  if (!days.length) return [];
+  const base = new Date(start + 'T00:00:00Z');
+  const mondayOffset = (base.getUTCDay() + 6) % 7;
+  const weekStart = new Date(base.getTime() - mondayOffset * 86400000);
+  const out = [];
+  for (let w = 0; w < weeks; w++) {
+    for (const d of days) {
+      const off = d === 0 ? 6 : d - 1;
+      const t = new Date(weekStart.getTime() + (w * 7 + off) * 86400000);
+      const ds = t.toISOString().slice(0, 10);
+      if (ds >= start) out.push(ds);
+    }
+  }
+  return Array.from(new Set(out)).sort();
+}
+
+function updatePackPreview() {
+  const dates = packDates();
+  const tip = document.getElementById('packPreview');
+  renderPackDayTimes();
+  updateLessonHint();
+  if (!dates.length) { tip.textContent = '请选择每周上课日'; return; }
+  tip.textContent = '共 ' + dates.length + ' 节：' + dates[0] + ' ~ ' + dates[dates.length - 1];
+}
+
+function closeRequestModal() { document.getElementById('requestModal').classList.remove('show'); }
+
+async function loadRequests() {
+  const box = document.getElementById('reqList');
+  try {
+    const list = await api('/schedule/request/my');
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无申请</div>'; return; }
+    box.innerHTML = list.map(r => {
+      const st = r.status === 1 ? '<span class="status-badge badge-ok">已通过</span>'
+        : r.status === 2 ? '<span class="status-badge badge-rej">已驳回</span>'
+        : '<span class="status-badge badge-wait">待审核</span>';
+      return '<div class="req-item">' + (r.className || '') + (r.isNewClass ? '（新建班级 ' + (r.classCode || '') + '）' : '') + ' · ' +
+        (r.lessonCount > 1 ? '套课 ' + r.lessonCount + ' 节（首节 ' + r.date + ' ' + r.time + '）' : r.date + ' ' + r.time) + ' ' + st +
+        '<div class="sub">' + (r.durationMinutes / 60) + ' 小时' + (r.remark ? ' · ' + r.remark : '') +
+        (r.auditRemark ? ' · 审核说明：' + r.auditRemark : '') + '</div></div>';
+    }).join('');
+  } catch (e) { box.innerHTML = '<div class="empty">' + e.message + '</div>'; }
+}
+
+async function submitRequest() {
+  const classId = document.getElementById('reqClass').value;
+  const time = document.getElementById('reqTime').value;
+  const durationMinutes = parseInt(document.getElementById('reqDuration').value);
+  const remark = document.getElementById('reqRemark').value.trim();
+  const startLessonNo = parseInt(document.getElementById('reqStartNo').value) || null;
+  if (!time) return toast('请填写上课时间');
+  if (startLessonNo !== null && (startLessonNo < 1 || startLessonNo > 999)) return toast('起始课次需在 1-999 之间');
+
+  const base = {classMode, time, durationMinutes, remark, startLessonNo};
+  if (classMode === 'new') {
+    base.className = document.getElementById('reqClassName').value.trim();
+    base.classCode = document.getElementById('reqClassCode').value.trim().toUpperCase();
+    base.gradeCode = document.getElementById('reqClassGrade').value;
+    base.subject = document.getElementById('reqClassSubject').value;
+    base.classType = document.getElementById('reqClassType').value;
+    base.students = document.getElementById('reqStudents').value;
+    if (!base.gradeCode) return toast('请选择年级');
+    if (!base.subject) return toast('请选择学科');
+    if (!base.classType) return toast('请选择班型');
+    if (!base.className) return toast('请填写班级名称');
+    if (!/^[A-Z0-9]{1,6}$/.test(base.classCode)) return toast('班次代码只能用字母或数字，最多 6 位');
+    if (!base.students.trim()) return toast('请填写学生名单');
+  } else {
+    if (!classId) return toast('请选择班级');
+    base.classId = parseInt(classId);
+  }
+
+  let payload;
+  if (reqMode === 'pack') {
+    const dates = packDates();
+    if (!dates.length) return toast('请选择开始日期和每周上课日');
+    if (dates.length > 60) return toast('一次最多提交 60 节');
+    // 各星期上课时间：优先取单独设置，未设置则用默认时间
+    const dayTimes = {};
+    checkedPackDays().forEach(d => { dayTimes[d] = packDayTimeMap[d] || packDayTimeMap[String(d)] || time; });
+    payload = Object.assign(base, {dates, dayTimes});
+  } else {
+    const date = document.getElementById('reqDate').value;
+    if (!date) return toast('请选择上课日期');
+    payload = Object.assign(base, {date});
+  }
+  try {
+    const d = await api('/schedule/request', {method:'POST', body: JSON.stringify(payload)});
+    toast('已提交排课申请' + (d && d.count > 1 ? '（套课 ' + d.count + ' 节）' : '') + '，等待管理员审核');
+    document.getElementById('reqRemark').value = '';
+    await loadRequests();
+  } catch (e) { toast(e.message); }
+}
+
+// ---------- 提交打卡 ----------
+async function submitAttendance() {
+  const classId = document.getElementById('classSelect').value;
+  const durationMinutes = parseInt(document.getElementById('durationSelect').value);
+  if (!classId) return toast('请先选择班级');
+
+  const present = [];
+  const leaves = [];
+  students.forEach(name => {
+    if (states[name] === 'leave') {
+      const reason = (elReasons[name] || '').trim();
+      if (!reason) throw warning('请填写 ' + name + ' 的请假原因');
+      leaves.push({ name: name, reason: reason });
+    } else {
+      present.push(name);
+    }
+  });
+  if (!present.length && !leaves.length) return toast('请至少标记一名学生');
+
+  try {
+    const body = {classId: parseInt(classId), durationMinutes: durationMinutes, present: present, leaves: leaves};
+    if (activeSchedule) {
+      body.scheduleId = activeSchedule.id;
+      const st = document.getElementById('startTimeInput').value;
+      if (!st) return toast('请填写实际上课时间');
+      body.startTime = st.replace('T', ' ');
+    }
+    const d = await api('/attendance/submit', { method: 'POST', body: JSON.stringify(body) });
+    lastCheckedId = activeSchedule ? activeSchedule.id : null;
+    closeAttendanceModal();
+    document.getElementById('lessonTip').style.display = 'none';
+    toast('✅ 已打卡：' + d.lessonLabel + '，等待管理员审核');
+    if (lastCheckedId) {
+      switchSchedTab('done');
+    }
+    await loadSchedules();
+    loadHistory();
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function warning(msg) { toast(msg); throw new Error(msg); }
+
+// ---------- 历史 ----------
+async function loadHistory() {
+  const box = document.getElementById('historyList');
+  try {
+    const list = await api('/attendance/my');
+    if (!list.length) { box.innerHTML = '<div class="empty">暂无打卡记录</div>'; return; }
+    box.innerHTML = list.map(a => {
+      const st = a.auditStatus === 1 ? '<span class="status-badge status-ok">已通过</span>'
+        : a.auditStatus === 2 ? '<span class="status-badge status-rej">已驳回</span>'
+        : '<span class="status-badge status-wait">待审核</span>';
+      const mail = a.emailStatus === '已发送' ? ' · 邮件已发送'
+        : a.emailStatus ? ' · 邮件' + a.emailStatus : '';
+      return '<div class="history-item">' +
+        '<div class="title">' + (a.className || '') + ' ' + (a.lessonLabel || '') + ' ' + st + '</div>' +
+        '<div class="sub">' + (a.actualStartTime || '').slice(0, 16) + ' · ' + (a.durationMinutes / 60) + ' 小时 · 出勤 ' + a.studentCount + ' 人' +
+        (a.leaveCount ? ' · 请假 ' + a.leaveCount + ' 人' : '') + mail + '</div></div>';
+    }).join('');
+  } catch (e) {
+    box.innerHTML = '<div class="empty">' + e.message + '</div>';
+  }
+}
+
+// ---------- 设置 ----------
+function openSettingModal() {
+  document.getElementById('setPhone').value = teacher.phone || '';
+  document.getElementById('setEmail').value = teacher.email || '';
+  document.getElementById('oldPwd').value = '';
+  document.getElementById('newPwd').value = '';
+  document.getElementById('settingModal').classList.add('show');
+}
+function closeSettingModal() { document.getElementById('settingModal').classList.remove('show'); }
+
+async function saveBindings() {
+  try {
+    const d = await api('/auth/profile', {
+      method: 'POST',
+      body: JSON.stringify({phone: document.getElementById('setPhone').value, email: document.getElementById('setEmail').value})
+    });
+    teacher = Object.assign(teacher, d);
+    localStorage.setItem('teacherInfo', JSON.stringify(teacher));
+    toast('已保存');
+  } catch (e) { toast(e.message); }
+}
+
+async function submitChangePwd() {
+  const oldPassword = document.getElementById('oldPwd').value;
+  const newPassword = document.getElementById('newPwd').value;
+  if (!oldPassword || !newPassword) return toast('请填写原密码和新密码');
+  if (newPassword.length < 6) return toast('新密码至少 6 位');
+  if (!/^[\x21-\x7E]+$/.test(newPassword)) return toast('密码不能包含中文或空格，请使用英文、数字和符号');
+  try {
+    const d = await api('/auth/change-password', {method:'POST', body: JSON.stringify({oldPassword, newPassword})});
+    toast(d.msg || '已提交审核');
+    closeSettingModal();
+  } catch (e) { toast(e.message); }
+}
+
+// 密码显示 / 隐藏（登录、改密等所有密码框）
+function enhancePasswordFields() {
+  document.querySelectorAll('input[type=password]').forEach(inp => {
+    if (inp.dataset.eye) return;
+    inp.dataset.eye = '1';
+    const wrap = document.createElement('span');
+    wrap.className = 'pwd-wrap';
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'pwd-eye';
+    btn.textContent = '👁';
+    btn.onclick = () => {
+      const show = inp.type === 'password';
+      inp.type = show ? 'text' : 'password';
+      btn.textContent = show ? '🙈' : '👁';
+    };
+    wrap.appendChild(btn);
+  });
+}
+document.addEventListener('DOMContentLoaded', enhancePasswordFields);
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

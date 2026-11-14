@@ -1,0 +1,19 @@
+name = "school-salary"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+workers_dev = true
+
+# 静态页面：/admin/ 与 /teacher/
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# D1 数据库（执行 wrangler d1 create school_salary 后回填 database_id）
+[[d1_databases]]
+binding = "DB"
+database_name = "school_salary"
+database_id = "your-d1-database-id"
+
+# JWT 签名密钥，部署前请替换为随机字符串
+[vars]
+JWT_SECRET = "please-change-this-to-a-random-secret-at-least-32-chars"

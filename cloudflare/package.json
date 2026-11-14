@@ -1,0 +1,16 @@
+{
+  "name": "school-salary-workers",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "wrangler": "^4.0.0"
+  },
+  "dependencies": {
+    "pinyin-pro": "^3.29.5"
+  }
+}

@@ -33,6 +33,8 @@ Desktop.ini
 # ===== Database =====
 *.sql.bak
 *.sql~
+# 线上库备份（含教师手机/邮箱与密码哈希，只存本地，不进仓库）
+cloudflare/backups/
 
 # ===== Build artifacts =====
 **/build/
@@ -57,3 +59,16 @@ unpackage/
 # ===== JWT / generated =====
 jwt_secret.key
 salary-backend-*.jar
+
+# ===== Cloudflare 架构 =====
+# 含真实 JWT_SECRET 与 database_id，不进仓库，使用 wrangler.toml.example
+cloudflare/wrangler.toml
+cloudflare/pages/
+cloudflare/.wrangler/
+.wrangler/
+
+# ===== IDE / 本地元数据 =====
+.trae/
+
+# ===== 含真实个人数据的一次性脚本（不进仓库） =====
+cloudflare/restore-real-data.sql
