@@ -228,13 +228,13 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
 .month-summary { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
 .month-stat { background:rgba(255,255,255,0.88); color:#334; border:1px solid rgba(255,255,255,0.55); border-radius:10px; padding:8px 12px; font-size:13px; }
 .month-stat b { color:#3b5bdb; font-size:16px; margin-left:4px; }
-.month-day { background:rgba(255,255,255,0.94); color:#334; border-radius:12px; overflow:hidden; margin-bottom:12px; }
-.month-day-head { background:#eef2ff; color:#3b5bdb; padding:10px 14px; font-weight:600; }
-.month-lesson { display:grid; grid-template-columns:140px minmax(0,1fr) auto; gap:12px; align-items:center; padding:12px 14px; border-bottom:1px solid #e8ebf3; }
+.month-day { background:rgba(255,255,255,0.94); color:#334; border-radius:10px; overflow:hidden; margin-bottom:8px; }
+.month-day-head { background:#eef2ff; color:#3b5bdb; padding:6px 12px; font-weight:600; font-size:13px; }
+.month-lesson { display:grid; grid-template-columns:120px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px 12px; border-bottom:1px solid #e8ebf3; }
 .month-lesson:last-child { border-bottom:none; }
-.month-time { color:#3b5bdb; font-weight:600; white-space:nowrap; }
-.month-class { font-weight:600; color:#223; }
-.month-meta { color:#667; font-size:12px; margin-top:4px; line-height:1.6; }
+.month-time { color:#3b5bdb; font-weight:600; white-space:nowrap; font-size:13px; }
+.month-class { font-weight:600; color:#223; font-size:13px; }
+.month-meta { color:#667; font-size:11px; margin-top:2px; line-height:1.5; }
 .money { color: #aeb9ff; font-weight: 600; }
 .stu-tag {
   display: inline-block;
@@ -843,6 +843,22 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
     </div>
     <div id="studentSchedBody"></div>
     <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('studentSchedModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 学生编辑弹窗 -->
+<div class="modal" id="studentEditModal">
+  <div class="modal-box">
+    <h3 id="studentEditTitle">编辑学生</h3>
+    <input id="estu_id" type="hidden">
+    <div class="field"><label>学生姓名</label><input id="estu_name" placeholder="如：张小明"></div>
+    <div class="field"><label>年级</label><select id="estu_grade"></select></div>
+    <div class="field"><label>联系电话</label><input id="estu_phone" placeholder="选填"></div>
+    <div class="field"><label>备注</label><input id="estu_remark" placeholder="选填"></div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button onclick="closeModal('studentEditModal')">取消</button>
+      <button class="btn-primary" onclick="saveEditedStudent()">保存</button>
+    </div>
   </div>
 </div>
 
@@ -2099,12 +2115,35 @@ function resetStudentForm() {
 function editStudent(id) {
   const s = studentListCache.find(x => Number(x.id) === Number(id));
   if (!s) return;
-  document.getElementById('stu_id').value = s.id;
-  document.getElementById('stu_name').value = s.name || '';
-  document.getElementById('stu_grade').value = s.gradeCode || '';
-  document.getElementById('stu_phone').value = s.phone || '';
-  document.getElementById('stu_remark').value = s.remark || '';
-  window.scrollTo({top: 0, behavior: 'smooth'});
+  document.getElementById('studentEditTitle').textContent = '编辑学生 · ' + s.name;
+  const gSel = document.getElementById('estu_grade');
+  if (!gSel.options.length) {
+    gSel.innerHTML = '<option value="">未设置</option>' +
+      GRADE_OPTIONS.map(g => '<option value="' + g[0] + '">' + g[1] + '</option>').join('');
+  }
+  document.getElementById('estu_id').value = s.id;
+  document.getElementById('estu_name').value = s.name || '';
+  gSel.value = s.gradeCode || '';
+  document.getElementById('estu_phone').value = s.phone || '';
+  document.getElementById('estu_remark').value = s.remark || '';
+  document.getElementById('studentEditModal').classList.add('show');
+}
+
+async function saveEditedStudent() {
+  const body = {
+    id: parseInt(document.getElementById('estu_id').value) || null,
+    name: document.getElementById('estu_name').value.trim(),
+    gradeCode: document.getElementById('estu_grade').value,
+    phone: document.getElementById('estu_phone').value.trim(),
+    remark: document.getElementById('estu_remark').value.trim()
+  };
+  if (!body.name) return toast('请填写学生姓名');
+  try {
+    await api('/student/save', {method:'POST', body: JSON.stringify(body)});
+    toast('学生信息已更新');
+    closeModal('studentEditModal');
+    loadStudentsTab();
+  } catch(e) { toast(e.message); }
 }
 
 async function saveStudent() {
