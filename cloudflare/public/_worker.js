@@ -26482,7 +26482,7 @@ async function studentUsedLessons(env, classId, studentName) {
   ).bind(classId, "\u3001" + studentName + "\u3001").first();
   return Number(row?.c || 0);
 }
-async function buildStudentPayload(env, student, withContact = true) {
+async function buildStudentPayload(env, student, withContact = true, withRecords = true) {
   const courseRows = await env.DB.prepare("SELECT * FROM student_course WHERE student_id = ? ORDER BY id").bind(student.id).all();
   const courses = [];
   const records = [];
@@ -26517,7 +26517,7 @@ async function buildStudentPayload(env, student, withContact = true) {
       usedLessons: used,
       remainingLessons: Math.max(0, total - used)
     });
-    if (c.class_id) {
+    if (c.class_id && withRecords) {
       const attRows = await env.DB.prepare(
         `SELECT id, actual_start_time, class_name, lesson_label, present_names, leave_json, audit_status
          FROM attendance
@@ -26558,11 +26558,98 @@ async function buildStudentPayload(env, student, withContact = true) {
 async function studentList(url, request, env) {
   await requireAdmin(request, env);
   const keyword = str(url.searchParams.get("keyword"));
-  const rows = keyword ? await env.DB.prepare("SELECT * FROM student WHERE status = 1 AND (name LIKE ? OR phone LIKE ?) ORDER BY id DESC").bind("%" + keyword + "%", "%" + keyword + "%").all() : await env.DB.prepare("SELECT * FROM student WHERE status = 1 ORDER BY id DESC").all();
+  const grade = normalizeGradeCode(url.searchParams.get("grade"));
+  const teacherId = intOrNull(url.searchParams.get("teacherId"));
+  let sql = "SELECT DISTINCT st.* FROM student st";
+  const where = ["st.status = 1"];
+  const params = [];
+  if (teacherId !== null) {
+    sql += " LEFT JOIN student_course sc ON sc.student_id = st.id";
+    where.push("sc.teacher_id = ?");
+    params.push(teacherId);
+  }
+  if (grade) {
+    where.push("st.grade_code = ?");
+    params.push(grade);
+  }
+  if (keyword) {
+    where.push("(st.name LIKE ? OR st.phone LIKE ?)");
+    params.push("%" + keyword + "%", "%" + keyword + "%");
+  }
+  sql += " WHERE " + where.join(" AND ") + " ORDER BY st.grade_code ASC, st.id DESC";
+  const students = (await env.DB.prepare(sql).bind(...params).all()).results || [];
   const list = [];
-  for (const s of rows.results || []) {
-    const payload = await buildStudentPayload(env, s, true);
-    list.push({ ...payload.student, courses: payload.courses, records: payload.records.slice(0, 10) });
+  if (students.length) {
+    const ids = students.map((s) => s.id);
+    const placeholders = ids.map(() => "?").join(",");
+    const courseRows = (await env.DB.prepare(
+      `SELECT * FROM student_course WHERE student_id IN (${placeholders}) ORDER BY id`
+    ).bind(...ids).all()).results || [];
+    const coursesByStudent = {};
+    for (const c of courseRows) (coursesByStudent[c.student_id] ||= []).push(c);
+    const classIds = [...new Set(courseRows.map((c) => c.class_id).filter(Boolean))];
+    const classMap = {};
+    if (classIds.length) {
+      const cp = classIds.map(() => "?").join(",");
+      const clsRows = (await env.DB.prepare(`SELECT id, name, teacher_id FROM class_info WHERE id IN (${cp})`).bind(...classIds).all()).results || [];
+      for (const cl of clsRows) classMap[cl.id] = cl;
+    }
+    const teacherIds = [...new Set([...courseRows.map((c) => c.teacher_id), ...Object.values(classMap).map((c) => c.teacher_id)].filter(Boolean))];
+    const teacherMap = {};
+    if (teacherIds.length) {
+      const tp = teacherIds.map(() => "?").join(",");
+      const tRows = (await env.DB.prepare(`SELECT id, name FROM teacher WHERE id IN (${tp})`).bind(...teacherIds).all()).results || [];
+      for (const t of tRows) teacherMap[t.id] = String(t.name || "");
+    }
+    const allClassIds = [...new Set(courseRows.map((c) => c.class_id).filter(Boolean))];
+    const usedMap = {};
+    if (allClassIds.length) {
+      const ap = allClassIds.map(() => "?").join(",");
+      const attRows = (await env.DB.prepare(
+        `SELECT class_id, present_names FROM attendance WHERE class_id IN (${ap}) AND audit_status IN (0, 1)`
+      ).bind(...allClassIds).all()).results || [];
+      for (const a of attRows) {
+        const names = String(a.present_names || "").split("\u3001").filter(Boolean);
+        for (const nm of names) {
+          const key = a.class_id + "|" + nm;
+          usedMap[key] = (usedMap[key] || 0) + 1;
+        }
+      }
+    }
+    for (const s of students) {
+      const courses = (coursesByStudent[s.id] || []).map((c) => {
+        const cls = c.class_id ? classMap[c.class_id] : null;
+        const className = cls ? String(cls.name || "") : "";
+        const tid = c.teacher_id || (cls ? cls.teacher_id : 0);
+        const total = Number(c.total_lessons || 0);
+        const used = usedMap[c.class_id + "|" + String(s.name)] || 0;
+        return {
+          id: c.id,
+          classId: c.class_id,
+          className,
+          teacherId: tid,
+          teacherName: tid ? teacherMap[tid] || "" : "",
+          courseName: String(c.course_name || className || "\u672A\u547D\u540D\u8BFE\u7A0B"),
+          courseScope: c.course_scope === "PACKAGE" ? "PACKAGE" : "SUBJECT",
+          gradeCode: normalizeGradeCode(c.grade_code),
+          adjustNote: String(c.adjust_note || ""),
+          totalLessons: total,
+          usedLessons: used,
+          remainingLessons: Math.max(0, total - used)
+        };
+      });
+      list.push({
+        id: s.id,
+        name: String(s.name || ""),
+        gradeCode: normalizeGradeCode(s.grade_code),
+        gradeName: GRADE_LABELS[normalizeGradeCode(s.grade_code)] || "",
+        phone: String(s.phone || ""),
+        remark: String(s.remark || ""),
+        shareToken: String(s.share_token || ""),
+        courses,
+        records: []
+      });
+    }
   }
   return ok({ list, grades: Object.keys(GRADE_LABELS).map((code) => ({ code, name: GRADE_LABELS[code] })) });
 }
@@ -26573,6 +26660,35 @@ async function studentDetail(url, request, env) {
   const s = await env.DB.prepare("SELECT * FROM student WHERE id = ?").bind(id).first();
   if (!s) return fail("\u5B66\u751F\u4E0D\u5B58\u5728");
   return ok(await buildStudentPayload(env, s, true));
+}
+async function studentSchedule(url, request, env) {
+  await requireAdmin(request, env);
+  const id = intOrNull(url.searchParams.get("id"));
+  const month = str(url.searchParams.get("month"));
+  if (!id) throw new ApiError(500, "\u7F3A\u5C11\u5B66\u751F id");
+  if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new ApiError(500, "\u6708\u4EFD\u683C\u5F0F\u5E94\u4E3A YYYY-MM");
+  const s = await env.DB.prepare("SELECT * FROM student WHERE id = ?").bind(id).first();
+  if (!s) return fail("\u5B66\u751F\u4E0D\u5B58\u5728");
+  const classRows = await env.DB.prepare(
+    "SELECT class_id FROM student_course WHERE student_id = ? AND class_id IS NOT NULL GROUP BY class_id"
+  ).bind(id).all();
+  const classIds = (classRows.results || []).map((r) => Number(r.class_id)).filter(Boolean);
+  if (!classIds.length) return ok({ list: [] });
+  const nextMonth = /* @__PURE__ */ new Date(month + "-01T00:00:00Z");
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const placeholders = classIds.map(() => "?").join(",");
+  const rows = await env.DB.prepare(
+    `SELECT s.*, c.name AS class_name, t.name AS teacher_name, cl.name AS classroom_name
+     FROM class_schedule s
+     LEFT JOIN class_info c ON c.id = s.class_id
+     LEFT JOIN teacher t ON t.id = s.teacher_id
+     LEFT JOIN classroom cl ON cl.id = s.classroom_id
+     WHERE s.class_id IN (${placeholders})
+       AND s.planned_date >= ? AND s.planned_date < ?
+       AND s.status IN (0, 1)
+     ORDER BY s.planned_date ASC, s.planned_time ASC, s.lesson_no ASC`
+  ).bind(...classIds, month + "-01", nextMonth.toISOString().slice(0, 10)).all();
+  return ok({ student: { id: s.id, name: s.name, gradeName: GRADE_LABELS[normalizeGradeCode(s.grade_code)] || "" }, list: (rows.results || []).map(mapSchedule) });
 }
 async function studentSave(request, env) {
   await requireAdmin(request, env);
@@ -27212,6 +27328,7 @@ async function handleApi(request, url, env, ctx) {
   if (method === "GET" && path === "/api/salary/export") return salaryExport(url, request, env);
   if (method === "GET" && path === "/api/student/list") return studentList(url, request, env);
   if (method === "GET" && path === "/api/student/detail") return studentDetail(url, request, env);
+  if (method === "GET" && path === "/api/student/schedule") return studentSchedule(url, request, env);
   if (method === "POST" && path === "/api/student/save") return studentSave(request, env);
   if (method === "POST" && path === "/api/student/delete") return studentDelete(request, env);
   if (method === "POST" && path === "/api/student/course/save") return studentCourseSave(request, env);

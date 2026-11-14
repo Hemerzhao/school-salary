@@ -645,14 +645,13 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
       <div class="card">
         <h3>学生列表</h3>
         <div class="filter-bar">
-          <div class="fitem"><label>搜索</label><input id="stuKeyword" placeholder="姓名 / 电话" onkeydown="if(event.key==='Enter')loadStudentsTab()"></div>
+          <div class="fitem"><label>年级</label><select id="stuGradeFilter" onchange="loadStudentsTab()"></select></div>
+          <div class="fitem"><label>教师</label><select id="stuTeacherFilter" onchange="loadStudentsTab()"></select></div>
+          <div class="fitem" style="flex:1;min-width:180px;"><label>搜索</label><input id="stuKeyword" placeholder="姓名 / 电话" onkeydown="if(event.key==='Enter')loadStudentsTab()"></div>
           <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-green" style="height:36px;padding:0 18px;" onclick="loadStudentsTab()">查询</button></div>
           <span class="hint" style="padding-bottom:9px;" id="stuCountHint"></span>
         </div>
-        <table>
-          <thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead>
-          <tbody id="studentTable"></tbody>
-        </table>
+        <div id="studentTableWrap"></div>
         <div class="empty" id="studentEmpty" style="display:none;">暂无学生档案</div>
       </div>
     </div>
@@ -828,6 +827,22 @@ textarea:focus { border-color: #b5c3ff; box-shadow: 0 0 0 3px rgba(181,195,255,0
     <h3 id="studentDetailTitle">学生上课记录</h3>
     <div id="studentDetailBox"></div>
     <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('studentDetailModal')">关闭</button></div>
+  </div>
+</div>
+
+<!-- 学生月课表弹窗 -->
+<div class="modal" id="studentSchedModal">
+  <div class="modal-box wide">
+    <h3 id="studentSchedTitle">学生课表</h3>
+    <div class="filter-bar" style="margin-bottom:10px;">
+      <div class="fitem"><label>月份</label><input id="stuSchedMonth" type="month" onchange="loadStudentSched()"></div>
+      <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(-1)">上月</button></div>
+      <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(0)">本月</button></div>
+      <div class="fitem"><label>&nbsp;</label><button class="btn-sm btn-gray" style="height:36px;padding:0 12px;" onclick="shiftStuSchedMonth(1)">下月</button></div>
+      <span class="hint" id="stuSchedSummary" style="padding-bottom:9px;"></span>
+    </div>
+    <div id="studentSchedBody"></div>
+    <div class="modal-actions" style="margin-top:14px;"><button onclick="closeModal('studentSchedModal')">关闭</button></div>
   </div>
 </div>
 
@@ -2003,21 +2018,44 @@ async function ensureClasses() {
   if (!classes.length) { try { classes = await api('/class/list'); } catch(e) { /* 忽略 */ } }
 }
 
+async function initStudentFilters() {
+  const gSel = document.getElementById('stuGradeFilter');
+  if (!gSel.options.length) {
+    gSel.innerHTML = '<option value="">全部年级</option>' +
+      GRADE_OPTIONS.map(g => '<option value="' + g[0] + '">' + g[1] + '</option>').join('');
+  }
+  await ensureTeachers();
+  const tSel = document.getElementById('stuTeacherFilter');
+  if (!tSel.options.length) {
+    tSel.innerHTML = '<option value="">全部教师</option>' +
+      teachers.filter(t => t.status !== 0).map(t => '<option value="' + t.id + '">' + escHtml(t.name) + '</option>').join('');
+  }
+}
+
 async function loadStudentsTab() {
-  const tbody = document.getElementById('studentTable');
+  await initStudentFilters();
+  const wrap = document.getElementById('studentTableWrap');
   const kw = (document.getElementById('stuKeyword').value || '').trim();
-  tbody.innerHTML = '<tr><td colspan="5" class="empty">加载中...</td></tr>';
+  const grade = document.getElementById('stuGradeFilter').value;
+  const teacherId = document.getElementById('stuTeacherFilter').value;
+  wrap.innerHTML = '<table><tbody><tr><td class="empty">加载中...</td></tr></tbody></table>';
   try {
-    const d = await api('/student/list' + (kw ? '?keyword=' + encodeURIComponent(kw) : ''));
+    const params = new URLSearchParams();
+    if (kw) params.set('keyword', kw);
+    if (grade) params.set('grade', grade);
+    if (teacherId) params.set('teacherId', teacherId);
+    const d = await api('/student/list' + (params.toString() ? '?' + params.toString() : ''));
     studentListCache = d.list || [];
     document.getElementById('studentEmpty').style.display = studentListCache.length ? 'none' : 'block';
     document.getElementById('stuCountHint').textContent = '共 ' + studentListCache.length + ' 名学生';
-    tbody.innerHTML = studentListCache.map(s => {
+
+    const rowHtml = (s) => {
       const courses = (s.courses || []).length
         ? s.courses.map(c => '<span class="stu-tag">' + escHtml(c.courseName) + (c.teacherName ? ' · ' + escHtml(c.teacherName) : '') +
             ' · 已上 ' + c.usedLessons + '/' + c.totalLessons + ' · 剩 ' + c.remainingLessons + '</span>').join('')
         : '<span style="color:#bbb;">未添加套课</span>';
       const ops = '<button class="btn-sm btn-blue" onclick="openCourseModal(' + s.id + ')">+ 套课</button>' +
+        '<button class="btn-sm btn-green" onclick="openStudentSched(' + s.id + ')">课表</button>' +
         '<button class="btn-sm btn-gray" onclick="openStudentDetail(' + s.id + ')">记录</button>' +
         '<button class="btn-sm btn-gray" onclick="copyStudentLink(' + s.id + ')">分享链接</button>' +
         '<button class="btn-sm btn-gray" onclick="editStudent(' + s.id + ')">编辑</button>' +
@@ -2025,9 +2063,28 @@ async function loadStudentsTab() {
       return '<tr><td><b>' + escHtml(s.name) + '</b></td><td>' + escHtml(s.gradeName || '—') + '</td>' +
         '<td>' + escHtml(s.phone || '—') + '</td><td style="max-width:420px;">' + courses + '</td>' +
         '<td class="ops">' + ops + '</td></tr>';
-    }).join('');
+    };
+
+    if (!grade) {
+      // 全部年级：按年级分组展示
+      const groups = {};
+      studentListCache.forEach(s => { const k = s.gradeCode || 'none'; (groups[k] ||= []).push(s); });
+      let html = '';
+      const order = GRADE_OPTIONS.map(g => g[0]);
+      const keys = order.filter(k => groups[k]).concat(Object.keys(groups).filter(k => !order.includes(k)));
+      keys.forEach(k => {
+        const gname = (GRADE_OPTIONS.find(g => g[0] === k) || [])[1] || '未分年级';
+        html += '<div style="margin:14px 0 6px;"><b style="color:#fff;">' + gname + '（' + groups[k].length + '）</b></div>';
+        html += '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead><tbody>';
+        html += groups[k].map(rowHtml).join('') + '</tbody></table>';
+      });
+      wrap.innerHTML = html;
+    } else {
+      wrap.innerHTML = '<table><thead><tr><th>姓名</th><th>年级</th><th>电话</th><th>套课 / 已上 / 剩余</th><th>操作</th></tr></thead><tbody>' +
+        studentListCache.map(rowHtml).join('') + '</tbody></table>';
+    }
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="5" class="empty">' + escHtml(e.message) + '</td></tr>';
+    wrap.innerHTML = '<table><tbody><tr><td class="empty">' + escHtml(e.message) + '</td></tr></tbody></table>';
   }
 }
 
@@ -2144,6 +2201,57 @@ async function openStudentDetail(id) {
     document.getElementById('studentDetailBox').innerHTML = coursesHtml + '<h3 style="font-size:14px;margin:14px 0 10px;">最近上课记录</h3>' + recordsHtml;
     document.getElementById('studentDetailModal').classList.add('show');
   } catch(e) { toast(e.message); }
+}
+
+let currentStuSchedId = null;
+async function openStudentSched(id) {
+  const s = studentListCache.find(x => Number(x.id) === Number(id));
+  if (!s) return;
+  currentStuSchedId = id;
+  document.getElementById('studentSchedTitle').textContent = s.name + (s.gradeName ? ' · ' + s.gradeName : '') + ' · 月课表';
+  document.getElementById('stuSchedMonth').value = currentMonthValue();
+  await loadStudentSched();
+  document.getElementById('studentSchedModal').classList.add('show');
+}
+
+function shiftStuSchedMonth(offset) {
+  const cur = document.getElementById('stuSchedMonth').value || currentMonthValue();
+  const p = cur.split('-').map(Number);
+  const d = new Date(p[0], p[1] - 1 + offset, 1);
+  document.getElementById('stuSchedMonth').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  loadStudentSched();
+}
+
+async function loadStudentSched() {
+  const id = currentStuSchedId;
+  const month = document.getElementById('stuSchedMonth').value || currentMonthValue();
+  const body = document.getElementById('studentSchedBody');
+  body.innerHTML = '<div class="empty">加载中...</div>';
+  try {
+    const d = await api('/student/schedule?id=' + id + '&month=' + month);
+    const list = d.list || [];
+    const total = list.length;
+    const hours = (list.reduce((a, b) => a + (Number(b.durationMinutes) || 0), 0) / 60).toFixed(1);
+    document.getElementById('stuSchedSummary').textContent = '共 ' + total + ' 节课 · ' + hours + ' 小时';
+    if (!total) { body.innerHTML = '<div class="empty">该月暂无排课</div>'; return; }
+    const groups = {};
+    list.forEach(l => { (groups[l.date] ||= []).push(l); });
+    const keys = Object.keys(groups).sort();
+    body.innerHTML = keys.map(date => {
+      const items = groups[date];
+      return '<div class="month-day">' +
+        '<div class="month-day-head">' + date + ' ' + weekdayText(date) + ' · ' + items.length + ' 节</div>' +
+        items.map(l => '<div class="month-lesson">' +
+          '<div class="month-time">' + escHtml(l.startTime || l.time || '') + (l.endTime ? '–' + l.endTime : '') + '</div>' +
+          '<div class="month-class"><b>' + escHtml(l.className || '') + '</b>' +
+            (l.lessonLabel ? ' <span class="tag" style="margin-left:6px;">' + escHtml(l.lessonLabel) + '</span>' : '') +
+            '<div class="month-meta">' + escHtml(l.teacherName || '') + (l.classroomName ? ' · ' + escHtml(l.classroomName) : '') +
+            ' · ' + Math.round((l.durationMinutes || 120) / 60 * 10) / 10 + ' 小时</div></div>' +
+          '<div>' + (l.status === 1 ? '<span class="tag tag-ok">已打卡</span>' : '<span class="tag tag-wait">待打卡</span>') + '</div>' +
+        '</div>').join('') +
+        '</div>';
+    }).join('');
+  } catch(e) { body.innerHTML = '<div class="empty">' + escHtml(e.message) + '</div>'; }
 }
 
 function copyStudentLink(id) {

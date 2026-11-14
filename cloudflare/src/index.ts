@@ -2482,7 +2482,7 @@ async function studentUsedLessons(env: Env, classId: any, studentName: string): 
 }
 
 /** 汇总学生档案：套课（含已上/剩余）+ 最近上课记录（来自教师打卡） */
-async function buildStudentPayload(env: Env, student: any, withContact = true) {
+async function buildStudentPayload(env: Env, student: any, withContact = true, withRecords = true) {
   const courseRows = await env.DB.prepare('SELECT * FROM student_course WHERE student_id = ? ORDER BY id').bind(student.id).all();
   const courses: any[] = [];
   const records: any[] = [];
@@ -2519,7 +2519,7 @@ async function buildStudentPayload(env: Env, student: any, withContact = true) {
       remainingLessons: Math.max(0, total - used)
     });
 
-    if (c.class_id) {
+    if (c.class_id && withRecords) {
       const attRows = await env.DB.prepare(
         `SELECT id, actual_start_time, class_name, lesson_label, present_names, leave_json, audit_status
          FROM attendance
@@ -2565,15 +2565,92 @@ async function buildStudentPayload(env: Env, student: any, withContact = true) {
 async function studentList(url: URL, request: Request, env: Env): Promise<Response> {
   await requireAdmin(request, env);
   const keyword = str(url.searchParams.get('keyword'));
-  const rows = keyword
-    ? await env.DB.prepare('SELECT * FROM student WHERE status = 1 AND (name LIKE ? OR phone LIKE ?) ORDER BY id DESC')
-        .bind('%' + keyword + '%', '%' + keyword + '%')
-        .all()
-    : await env.DB.prepare('SELECT * FROM student WHERE status = 1 ORDER BY id DESC').all();
+  const grade = normalizeGradeCode(url.searchParams.get('grade'));
+  const teacherId = intOrNull(url.searchParams.get('teacherId'));
+
+  let sql = 'SELECT DISTINCT st.* FROM student st';
+  const where: string[] = ['st.status = 1'];
+  const params: any[] = [];
+  if (teacherId !== null) {
+    sql += ' LEFT JOIN student_course sc ON sc.student_id = st.id';
+    where.push('sc.teacher_id = ?');
+    params.push(teacherId);
+  }
+  if (grade) { where.push('st.grade_code = ?'); params.push(grade); }
+  if (keyword) {
+    where.push('(st.name LIKE ? OR st.phone LIKE ?)');
+    params.push('%' + keyword + '%', '%' + keyword + '%');
+  }
+  sql += ' WHERE ' + where.join(' AND ') + ' ORDER BY st.grade_code ASC, st.id DESC';
+  const students = (await env.DB.prepare(sql).bind(...params).all()).results || [];
+
   const list: any[] = [];
-  for (const s of (rows.results || []) as any[]) {
-    const payload = await buildStudentPayload(env, s, true);
-    list.push({ ...payload.student, courses: payload.courses, records: payload.records.slice(0, 10) });
+  if (students.length) {
+    const ids = students.map((s: any) => s.id);
+    const placeholders = ids.map(() => '?').join(',');
+    // 批量查套课
+    const courseRows = (await env.DB.prepare(
+      `SELECT * FROM student_course WHERE student_id IN (${placeholders}) ORDER BY id`
+    ).bind(...ids).all()).results || [];
+    const coursesByStudent: Record<number, any[]> = {};
+    for (const c of courseRows as any[]) (coursesByStudent[c.student_id] ||= []).push(c);
+    // 批量查班级
+    const classIds = [...new Set((courseRows as any[]).map(c => c.class_id).filter(Boolean))];
+    const classMap: Record<number, any> = {};
+    if (classIds.length) {
+      const cp = classIds.map(() => '?').join(',');
+      const clsRows = (await env.DB.prepare(`SELECT id, name, teacher_id FROM class_info WHERE id IN (${cp})`).bind(...classIds).all()).results || [];
+      for (const cl of clsRows as any[]) classMap[cl.id] = cl;
+    }
+    // 批量查教师
+    const teacherIds = [...new Set([...(courseRows as any[]).map(c => c.teacher_id), ...Object.values(classMap).map((c: any) => c.teacher_id)].filter(Boolean))];
+    const teacherMap: Record<number, string> = {};
+    if (teacherIds.length) {
+      const tp = teacherIds.map(() => '?').join(',');
+      const tRows = (await env.DB.prepare(`SELECT id, name FROM teacher WHERE id IN (${tp})`).bind(...teacherIds).all()).results || [];
+      for (const t of tRows as any[]) teacherMap[t.id] = String(t.name || '');
+    }
+    // 批量查已上课时（按班级+学生名）
+    const allClassIds = [...new Set((courseRows as any[]).map(c => c.class_id).filter(Boolean))];
+    const usedMap: Record<string, number> = {};
+    if (allClassIds.length) {
+      const ap = allClassIds.map(() => '?').join(',');
+      const attRows = (await env.DB.prepare(
+        `SELECT class_id, present_names FROM attendance WHERE class_id IN (${ap}) AND audit_status IN (0, 1)`
+      ).bind(...allClassIds).all()).results || [];
+      for (const a of attRows as any[]) {
+        const names = String(a.present_names || '').split('、').filter(Boolean);
+        for (const nm of names) {
+          const key = a.class_id + '|' + nm;
+          usedMap[key] = (usedMap[key] || 0) + 1;
+        }
+      }
+    }
+
+    for (const s of students as any[]) {
+      const courses = (coursesByStudent[s.id] || []).map((c: any) => {
+        const cls = c.class_id ? classMap[c.class_id] : null;
+        const className = cls ? String(cls.name || '') : '';
+        const tid = c.teacher_id || (cls ? cls.teacher_id : 0);
+        const total = Number(c.total_lessons || 0);
+        const used = usedMap[c.class_id + '|' + String(s.name)] || 0;
+        return {
+          id: c.id, classId: c.class_id, className, teacherId: tid,
+          teacherName: tid ? teacherMap[tid] || '' : '',
+          courseName: String(c.course_name || className || '未命名课程'),
+          courseScope: c.course_scope === 'PACKAGE' ? 'PACKAGE' : 'SUBJECT',
+          gradeCode: normalizeGradeCode(c.grade_code), adjustNote: String(c.adjust_note || ''),
+          totalLessons: total, usedLessons: used, remainingLessons: Math.max(0, total - used)
+        };
+      });
+      list.push({
+        id: s.id, name: String(s.name || ''),
+        gradeCode: normalizeGradeCode(s.grade_code),
+        gradeName: GRADE_LABELS[normalizeGradeCode(s.grade_code)] || '',
+        phone: String(s.phone || ''), remark: String(s.remark || ''),
+        shareToken: String(s.share_token || ''), courses, records: []
+      });
+    }
   }
   return ok({ list, grades: Object.keys(GRADE_LABELS).map(code => ({ code, name: GRADE_LABELS[code] })) });
 }
@@ -2585,6 +2662,43 @@ async function studentDetail(url: URL, request: Request, env: Env): Promise<Resp
   const s = await env.DB.prepare('SELECT * FROM student WHERE id = ?').bind(id).first();
   if (!s) return fail('学生不存在');
   return ok(await buildStudentPayload(env, s, true));
+}
+
+/** 学生月课表：按学生关联的班级，拉取指定月份的排课，按日期升序 */
+async function studentSchedule(url: URL, request: Request, env: Env): Promise<Response> {
+  await requireAdmin(request, env);
+  const id = intOrNull(url.searchParams.get('id'));
+  const month = str(url.searchParams.get('month'));
+  if (!id) throw new ApiError(500, '缺少学生 id');
+  if (!month || !/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new ApiError(500, '月份格式应为 YYYY-MM');
+
+  const s = await env.DB.prepare('SELECT * FROM student WHERE id = ?').bind(id).first();
+  if (!s) return fail('学生不存在');
+
+  // 学生关联的班级（来自 student_course）
+  const classRows = await env.DB.prepare(
+    'SELECT class_id FROM student_course WHERE student_id = ? AND class_id IS NOT NULL GROUP BY class_id'
+  ).bind(id).all();
+  const classIds = (classRows.results || []).map((r: any) => Number(r.class_id)).filter(Boolean);
+  if (!classIds.length) return ok({ list: [] });
+
+  const nextMonth = new Date(month + '-01T00:00:00Z');
+  nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+  const placeholders = classIds.map(() => '?').join(',');
+  const rows = await env.DB.prepare(
+    `SELECT s.*, c.name AS class_name, t.name AS teacher_name, cl.name AS classroom_name
+     FROM class_schedule s
+     LEFT JOIN class_info c ON c.id = s.class_id
+     LEFT JOIN teacher t ON t.id = s.teacher_id
+     LEFT JOIN classroom cl ON cl.id = s.classroom_id
+     WHERE s.class_id IN (${placeholders})
+       AND s.planned_date >= ? AND s.planned_date < ?
+       AND s.status IN (0, 1)
+     ORDER BY s.planned_date ASC, s.planned_time ASC, s.lesson_no ASC`
+  )
+    .bind(...classIds, month + '-01', nextMonth.toISOString().slice(0, 10))
+    .all();
+  return ok({ student: { id: s.id, name: s.name, gradeName: GRADE_LABELS[normalizeGradeCode(s.grade_code)] || '' }, list: (rows.results || []).map(mapSchedule) });
 }
 
 async function studentSave(request: Request, env: Env): Promise<Response> {
@@ -3297,6 +3411,7 @@ async function handleApi(request: Request, url: URL, env: Env, ctx: any): Promis
 
   if (method === 'GET' && path === '/api/student/list') return studentList(url, request, env);
   if (method === 'GET' && path === '/api/student/detail') return studentDetail(url, request, env);
+  if (method === 'GET' && path === '/api/student/schedule') return studentSchedule(url, request, env);
   if (method === 'POST' && path === '/api/student/save') return studentSave(request, env);
   if (method === 'POST' && path === '/api/student/delete') return studentDelete(request, env);
   if (method === 'POST' && path === '/api/student/course/save') return studentCourseSave(request, env);
